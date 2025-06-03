@@ -151,18 +151,19 @@ mod test {
     use std::error::Error;
 
     use image::{DynamicImage, ImageResult, GenericImageView, imageops};
+    use ndarray::{array, Array};
+    use num::{Float, Signed};
     use palette::{Srgb, named};
 
     use crate::{
-        colour::{utils::ONE_BIT},
-        prelude::{*, palettes::{WEB_SAFE, EIGHT_BIT}}, dither::{FLOYD_STEINBERG, JARVIS_JUDICE_NINKE, STUCKI, ATKINSON, BURKES, SIERRA, SIERRA_TWO_ROW, SIERRA_LITE, bayer::Bayer},
+        colour::utils::ONE_BIT, dither::{ordered::{Bayer, CheckeredDiamonds, Diamonds, NewStars, Stars}, ATKINSON, BURKES, FLOYD_STEINBERG, JARVIS_JUDICE_NINKE, SIERRA, SIERRA_LITE, SIERRA_TWO_ROW, STUCKI}, prelude::{palettes::{EIGHT_BIT, WEB_SAFE}, *}
     };
 
     type UtilResult<T> = Result<T,Box<dyn Error>>;
 
     // From Unsplash, and more specifically Dima Solomin.
-    const IMAGE_URL: &'static str = "https://images.unsplash.com/photo-1736457908762-d6ae9e5fb593?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
-    const MAX_DIM: Option<usize> = Some(500);
+    const IMAGE_URL: &'static str = "https://images.unsplash.com/photo-1532274402911-5a369e4c4bb5?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+    const MAX_DIM: Option<usize> = Some(1000);
 
     fn get_image() -> UtilResult<DynamicImage> {
         let img_bytes = reqwest::blocking::get(IMAGE_URL)?.bytes()?;
@@ -193,6 +194,31 @@ mod test {
         dither(&image, WEB_SAFE.to_vec(), Some("-web-safe"))?;
         dither(&image, EIGHT_BIT.to_vec(), Some("-8-bit"))?;
         dither(&image, palette, Some("-custom-palette"))?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn experiment_test() -> UtilResult<()> {
+        let stars_arr = array![
+            [7., 6., 5., 4., 3., 2., 1., 2., 3., 4., 5., 6., 7.],
+            [6., 4., 2., 1., 2., 1., 2., 1., 2., 1., 2., 4., 6.],
+            [5., 4., 1., 0., 1., 0., 3., 0., 1., 0., 1., 4., 5.],
+            [4., 3., 2., 1., 0., 1., 4., 1., 0., 1., 2., 3., 4.],
+            [3., 2., 1., 0., 1., 2., 5., 2., 1., 0., 1., 2., 3.],
+            [2., 1., 0., 1., 2., 4., 6., 4., 2., 1., 0., 1., 2.],
+            [1., 2., 3., 4., 5., 6., 7., 6., 5., 4., 3., 2., 1.],
+            [2., 1., 0., 1., 2., 4., 6., 4., 2., 1., 0., 1., 2.],
+            [3., 2., 1., 0., 1., 2., 5., 2., 1., 0., 1., 2., 3.],
+            [4., 3., 2., 1., 0., 1., 4., 1., 0., 1., 2., 3., 4.],
+            [5., 4., 1., 0., 1., 0., 3., 0., 1., 0., 1., 4., 5.],
+            [6., 4., 2., 1., 2., 1., 2., 1., 2., 1., 2., 4., 6.],
+            [7., 6., 5., 4., 3., 2., 1., 2., 3., 4., 5., 6., 7.],
+        ];
+
+        let normalized = stars_arr / 7.;
+
+        println!("{:#?}", normalized);
 
         Ok(())
     }
@@ -278,31 +304,53 @@ mod test {
     ) -> ImageResult<()> {
         let postfix = opt_postfix.unwrap_or("");
 
-        let error_propagators = vec![
-            FLOYD_STEINBERG,
-            JARVIS_JUDICE_NINKE,
-            STUCKI,
-            ATKINSON,
-            BURKES,
-            SIERRA,
-            SIERRA_TWO_ROW,
-            SIERRA_LITE
-        ];
+        // let error_propagators = vec![
+        //     FLOYD_STEINBERG,
+        //     JARVIS_JUDICE_NINKE,
+        //     STUCKI,
+        //     ATKINSON,
+        //     BURKES,
+        //     SIERRA,
+        //     SIERRA_TWO_ROW,
+        //     SIERRA_LITE
+        // ];
 
-        for propagator in error_propagators.into_iter() {
-            image.clone()
-                .apply(&propagator.with_palette(palette.clone()))
-                .save(format!("data/dither/{}{}.png", propagator.name, postfix))?;
-        }
+        // for propagator in error_propagators.into_iter() {
+        //     image.clone()
+        //         .apply(&propagator.with_palette(palette.clone()))
+        //         .save(format!("data/dither/{}{}.png", propagator.name, postfix))?;
+        // }
 
-        image.clone().apply(&Bayer::new(2, palette.clone()))
-            .save(format!("data/dither/bayer-2x2{}.png", postfix))?;
-        image.clone().apply(&Bayer::new(4, palette.clone()))
-            .save(format!("data/dither/bayer-4x4{}.png", postfix))?;
-        image.clone().apply(&Bayer::new(8, palette.clone()))
-            .save(format!("data/dither/bayer-8x8{}.png", postfix))?;
-        image.clone().apply(&Bayer::new(16, palette.clone()))
-            .save(format!("data/dither/bayer-16x16{}.png", postfix))?;
+        // image.clone().apply(&Bayer::new(2, palette.clone()))
+        //     .save(format!("data/dither/bayer-2x2{}.png", postfix))?;
+        // image.clone().apply(&Bayer::new(4, palette.clone()))
+        //     .save(format!("data/dither/bayer-4x4{}.png", postfix))?;
+        // image.clone().apply(&Bayer::new(8, palette.clone()))
+        //     .save(format!("data/dither/bayer-8x8{}.png", postfix))?;
+        // image.clone().apply(&Bayer::new(16, palette.clone()))
+        //     .save(format!("data/dither/bayer-16x16{}.png", postfix))?;
+
+        image.clone().apply(&Diamonds::new(8, palette.clone()))
+            .save(format!("data/dither/stars-8x8{}.png", postfix))?;
+        image.clone().apply(&Diamonds::new(12, palette.clone()))
+            .save(format!("data/dither/stars-12x12{}.png", postfix))?;
+        image.clone().apply(&Diamonds::new(16, palette.clone()))
+            .save(format!("data/dither/stars-16x16{}.png", postfix))?;
+
+        image.clone().apply(&NewStars::new(palette.clone()))
+            .save(format!("data/dither/newstars-13x13{}.png", postfix))?;
+
+        image.clone().apply(&CheckeredDiamonds::new(8, palette.clone()))
+            .save(format!("data/dither/checkered-stars-8x8{}.png", postfix))?;
+        image.clone().apply(&CheckeredDiamonds::new(12, palette.clone()))
+            .save(format!("data/dither/checkered-stars-12x12{}.png", postfix))?;
+        image.clone().apply(&CheckeredDiamonds::new(16, palette.clone()))
+            .save(format!("data/dither/checkered-stars-16x16{}.png", postfix))?;
+
+        image.clone().apply(&Stars::new(palette.clone()))
+            .save(format!("data/dither/purestars-12x12{}.png", postfix))?;
+
         Ok(())
     }
+
 }

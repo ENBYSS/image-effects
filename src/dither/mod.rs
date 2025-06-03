@@ -2,7 +2,7 @@
 pub mod error;
 
 /// Contains logic for Ordered / Bayer dithering.
-pub mod bayer;
+pub mod ordered;
 
 pub use error::{
     FLOYD_STEINBERG,
