@@ -163,7 +163,7 @@ mod test {
 
     // From Unsplash, and more specifically Dima Solomin.
     const IMAGE_URL: &'static str = "https://images.unsplash.com/photo-1532274402911-5a369e4c4bb5?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
-    const MAX_DIM: Option<usize> = Some(1000);
+    const MAX_DIM: Option<usize> = Some(500);
 
     fn get_image() -> UtilResult<DynamicImage> {
         let img_bytes = reqwest::blocking::get(IMAGE_URL)?.bytes()?;
@@ -304,31 +304,31 @@ mod test {
     ) -> ImageResult<()> {
         let postfix = opt_postfix.unwrap_or("");
 
-        // let error_propagators = vec![
-        //     FLOYD_STEINBERG,
-        //     JARVIS_JUDICE_NINKE,
-        //     STUCKI,
-        //     ATKINSON,
-        //     BURKES,
-        //     SIERRA,
-        //     SIERRA_TWO_ROW,
-        //     SIERRA_LITE
-        // ];
+        let error_propagators = vec![
+            FLOYD_STEINBERG,
+            JARVIS_JUDICE_NINKE,
+            STUCKI,
+            ATKINSON,
+            BURKES,
+            SIERRA,
+            SIERRA_TWO_ROW,
+            SIERRA_LITE
+        ];
 
-        // for propagator in error_propagators.into_iter() {
-        //     image.clone()
-        //         .apply(&propagator.with_palette(palette.clone()))
-        //         .save(format!("data/dither/{}{}.png", propagator.name, postfix))?;
-        // }
+        for propagator in error_propagators.into_iter() {
+            image.clone()
+                .apply(&propagator.with_palette(palette.clone()))
+                .save(format!("data/dither/{}{}.png", propagator.name, postfix))?;
+        }
 
-        // image.clone().apply(&Bayer::new(2, palette.clone()))
-        //     .save(format!("data/dither/bayer-2x2{}.png", postfix))?;
-        // image.clone().apply(&Bayer::new(4, palette.clone()))
-        //     .save(format!("data/dither/bayer-4x4{}.png", postfix))?;
-        // image.clone().apply(&Bayer::new(8, palette.clone()))
-        //     .save(format!("data/dither/bayer-8x8{}.png", postfix))?;
-        // image.clone().apply(&Bayer::new(16, palette.clone()))
-        //     .save(format!("data/dither/bayer-16x16{}.png", postfix))?;
+        image.clone().apply(&Bayer::new(2, palette.clone()))
+            .save(format!("data/dither/bayer-2x2{}.png", postfix))?;
+        image.clone().apply(&Bayer::new(4, palette.clone()))
+            .save(format!("data/dither/bayer-4x4{}.png", postfix))?;
+        image.clone().apply(&Bayer::new(8, palette.clone()))
+            .save(format!("data/dither/bayer-8x8{}.png", postfix))?;
+        image.clone().apply(&Bayer::new(16, palette.clone()))
+            .save(format!("data/dither/bayer-16x16{}.png", postfix))?;
 
         image.clone().apply(&Diamonds::new(8, palette.clone()))
             .save(format!("data/dither/stars-8x8{}.png", postfix))?;
