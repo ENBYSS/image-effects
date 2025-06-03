@@ -218,8 +218,6 @@ mod test {
 
         let normalized = stars_arr / 7.;
 
-        println!("{:#?}", normalized);
-
         Ok(())
     }
 
