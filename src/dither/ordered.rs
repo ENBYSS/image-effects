@@ -202,40 +202,130 @@ impl NewStars {
 
     fn dither_matrix() -> Array<f64, Dim<[usize; 2]>> {
         let stars_arr = array![
-            [4., 3., 4., 3., 3., 4., 4., 5., 5., 4., 4., 4.],
-            [3., 4., 2., 1., 2., 5., 5., 2., 1., 2., 0., 4.],
-            [4., 1., 0., 0., 6., 3., 0., 6., 0., 1., 2., 3.],
-            [4., 2., 1., 6., 2., 0., 5., 0., 6., 6., 0., 3.],
-            [5., 1., 0., 6., 4., 3., 0., 7., 5., 4., 6., 4.],
-            [5., 2., 1., 2., 7., 5., 8., 6., 4., 3., 4., 5.],
-            [4., 5., 2., 0., 1., 8., 9., 8., 6., 2., 3., 5.],
-            [3., 5., 3., 2., 1., 0., 8., 0., 7., 4., 2., 4.],
-            [3., 0., 6., 3., 2., 7., 3., 2., 0., 6., 2., 3.],
-            [4., 2., 1., 6., 6., 3., 2., 1., 0., 6., 0., 3.],
-            [3., 4., 2., 0., 1., 2., 1., 0., 6., 1., 2., 4.],
-            [4., 3., 4., 4., 3., 4., 5., 5., 4., 3., 3., 4.],
+            [4., 5., 3., 2., 1., 0., 1., 2., 3., 5.],
+            [3., 2., 1., 0., 0., 1., 0., 1., 2., 5.],
+            [2., 1., 0., 0., 1., 2., 0., 0., 1., 3.],
+            [1., 0., 0., 1., 2., 3., 1., 0., 0., 2.],
+            [0., 1., 2., 3., 4., 4., 2., 1., 0., 1.],
+            [1., 0., 1., 2., 4., 5., 3., 2., 1., 0.],
+            [2., 0., 0., 1., 3., 2., 1., 0., 0., 1.],
+            [3., 1., 0., 0., 2., 1., 0., 0., 1., 2.],
+            [4., 2., 1., 0., 1., 0., 0., 1., 2., 3.],
+            [5., 3., 2., 1., 0., 1., 2., 3., 5., 5.],
         ].reversed_axes();
-
-            //         [0, 0, 4, 0, 0, 0, 0, 5, 5, 4, 4, 0],
-            // [0, 4, 0, 0, 0, 5, 5, 0, 0, 0, 0, 4],
-            // [4, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0],
-            // [4, 0, 0, 6, 0, 0, 0, 0, 6, 6, 0, 0],
-            // [5, 0, 0, 6, 0, 0, 0, 7, 0, 0, 6, 0],
-            // [5, 0, 0, 0, 7, 0, 8, 0, 0, 0, 0, 5],
-            // [0, 5, 0, 0, 0, 8, 9, 8, 0, 0, 0, 5],
-            // [0, 5, 0, 0, 0, 0, 8, 0, 7, 0, 0, 0],
-            // [0, 0, 6, 0, 0, 7, 0, 0, 0, 6, 0, 0],
-            // [4, 0, 0, 6, 6, 0, 0, 0, 0, 6, 0, 0],
-            // [0, 4, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0],
-            // [0, 0, 4, 4, 0, 0, 5, 5, 0, 0, 0, 4],
-        stars_arr / 9.
+        stars_arr / 5.
     }
 }
 
 impl Effect<RgbImageRepr> for NewStars {
     fn affect(&self, mut image: RgbImageRepr) -> RgbImageRepr {
         let matrix = Self::dither_matrix();
-        apply_ordered_matrix_to_image(image, matrix, 12, &self.palette)
+        apply_ordered_matrix_to_image(image, matrix, 10, &self.palette)
+    }
+}
+
+pub struct Grid {
+    palette: Vec<Srgb>
+}
+
+impl Grid {
+
+    /// Creates a new `Bayer` ditherer with the given matrix size.
+    pub fn new(palette: Vec<Srgb>) -> Self {
+        Self { palette }
+    }
+
+    fn dither_matrix() -> Array<f64, Dim<[usize; 2]>> {
+        let stars_arr = array![
+            [0., 1., 0., 1., 0., 1., 0., 1., 0., 1.],
+            [1., 2., 3., 2., 3., 2., 3., 2., 3., 0.],
+            [0., 3., 4., 5., 4., 5., 4., 5., 2., 1.],
+            [1., 2., 5., 6., 7., 6., 7., 4., 3., 0.],
+            [0., 3., 4., 7., 8., 9., 6., 5., 2., 1.],
+            [1., 2., 5., 6., 9., 8., 7., 4., 3., 0.],
+            [0., 3., 4., 7., 6., 7., 6., 5., 2., 1.],
+            [1., 2., 5., 4., 5., 4., 5., 4., 3., 0.],
+            [0., 3., 2., 3., 2., 3., 2., 3., 2., 1.],
+            [1., 0., 1., 0., 1., 0., 1., 0., 1., 0.],
+        ].reversed_axes();
+        stars_arr / 9.
+    }
+}
+
+impl Effect<RgbImageRepr> for Grid {
+    fn affect(&self, mut image: RgbImageRepr) -> RgbImageRepr {
+        let matrix = Self::dither_matrix();
+        apply_ordered_matrix_to_image(image, matrix, 10, &self.palette)
+    }
+}
+
+pub struct Trail {
+    palette: Vec<Srgb>
+}
+
+impl Trail {
+
+    /// Creates a new `Bayer` ditherer with the given matrix size.
+    pub fn new(palette: Vec<Srgb>) -> Self {
+        Self { palette }
+    }
+
+    fn dither_matrix() -> Array<f64, Dim<[usize; 2]>> {
+        let stars_arr = array![
+            [9., 8., 7., 6., 5., 4., 3., 2., 1., 0.],
+            [8., 9., 8., 7., 6., 5., 4., 3., 2., 1.],
+            [7., 8., 9., 8., 7., 6., 5., 4., 3., 2.],
+            [6., 7., 8., 9., 8., 7., 6., 5., 4., 3.],
+            [5., 6., 7., 8., 9., 8., 7., 6., 5., 4.],
+            [4., 5., 6., 7., 8., 9., 8., 7., 6., 5.],
+            [3., 4., 5., 6., 7., 8., 9., 8., 7., 6.],
+            [2., 3., 4., 5., 6., 7., 8., 9., 8., 7.],
+            [1., 2., 3., 4., 5., 6., 7., 8., 9., 8.],
+            [0., 1., 2., 3., 4., 5., 6., 7., 8., 9.],
+        ].reversed_axes();
+        stars_arr / 9.
+    }
+}
+
+impl Effect<RgbImageRepr> for Trail {
+    fn affect(&self, mut image: RgbImageRepr) -> RgbImageRepr {
+        let matrix = Self::dither_matrix();
+        apply_ordered_matrix_to_image(image, matrix, 10, &self.palette)
+    }
+}
+
+pub struct Crisscross {
+    palette: Vec<Srgb>
+}
+
+impl Crisscross {
+
+    /// Creates a new `Bayer` ditherer with the given matrix size.
+    pub fn new(palette: Vec<Srgb>) -> Self {
+        Self { palette }
+    }
+
+    fn dither_matrix() -> Array<f64, Dim<[usize; 2]>> {
+        let stars_arr = array![
+            [0., 0., 1., 0., 4., 0., 1., 0., 0., 0.],
+            [0., 1., 2., 0., 5., 0., 2., 1., 0., 0.],
+            [1., 2., 2., 0., 6., 0., 3., 2., 1., 0.],
+            [0., 0., 0., 3., 7., 0., 3., 3., 2., 1.],
+            [4., 5., 6., 7., 8., 9., 0., 0., 0., 0.],
+            [0., 0., 0., 0., 9., 8., 7., 6., 5., 4.],
+            [1., 2., 3., 3., 0., 7., 3., 0., 0., 0.],
+            [0., 1., 2., 3., 0., 6., 0., 2., 2., 1.],
+            [0., 0., 1., 2., 0., 5., 0., 2., 1., 0.],
+            [0., 0., 0., 1., 0., 4., 0., 1., 0., 0.],
+        ].reversed_axes();
+        stars_arr / 9.
+    }
+}
+
+impl Effect<RgbImageRepr> for Crisscross {
+    fn affect(&self, mut image: RgbImageRepr) -> RgbImageRepr {
+        let matrix = Self::dither_matrix();
+        apply_ordered_matrix_to_image(image, matrix, 10, &self.palette)
     }
 }
 

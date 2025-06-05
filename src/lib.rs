@@ -156,7 +156,7 @@ mod test {
     use palette::{Srgb, named};
 
     use crate::{
-        colour::utils::ONE_BIT, dither::{ordered::{Bayer, CheckeredDiamonds, Diamonds, NewStars, Stars}, ATKINSON, BURKES, FLOYD_STEINBERG, JARVIS_JUDICE_NINKE, SIERRA, SIERRA_LITE, SIERRA_TWO_ROW, STUCKI}, prelude::{palettes::{EIGHT_BIT, WEB_SAFE}, *}
+        colour::utils::ONE_BIT, dither::{ordered::{Bayer, CheckeredDiamonds, Crisscross, Diamonds, Grid, NewStars, Stars, Trail}, ATKINSON, BURKES, FLOYD_STEINBERG, JARVIS_JUDICE_NINKE, SIERRA, SIERRA_LITE, SIERRA_TWO_ROW, STUCKI}, prelude::{palettes::{EIGHT_BIT, WEB_SAFE}, *}
     };
 
     type UtilResult<T> = Result<T,Box<dyn Error>>;
@@ -336,7 +336,16 @@ mod test {
             .save(format!("data/dither/stars-16x16{}.png", postfix))?;
 
         image.clone().apply(&NewStars::new(palette.clone()))
-            .save(format!("data/dither/newstars-13x13{}.png", postfix))?;
+            .save(format!("data/dither/newstars-10x10{}.png", postfix))?;
+
+        image.clone().apply(&Grid::new(palette.clone()))
+            .save(format!("data/dither/grid-10x10{}.png", postfix))?;
+
+        image.clone().apply(&Trail::new(palette.clone()))
+            .save(format!("data/dither/trail-10x10{}.png", postfix))?;
+
+        image.clone().apply(&Crisscross::new(palette.clone()))
+            .save(format!("data/dither/crisscross-10x10{}.png", postfix))?;
 
         image.clone().apply(&CheckeredDiamonds::new(8, palette.clone()))
             .save(format!("data/dither/checkered-stars-8x8{}.png", postfix))?;
