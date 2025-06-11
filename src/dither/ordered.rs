@@ -18,14 +18,34 @@ pub enum OrderedStrategy {
     NewStars,
     CheckeredDiamonds(u8),
     Diamonds(u8),
-    Wavy,
+    Wavy(Orientation),
     BootlegBayer,
     Diagonals,
     DiagonalsBig,
+    DiagonalsN {
+        n: u8,
+        direction: DiagonalDirection,
+        increase: Increase,
+    },
     DiamondGrid,
     SpeckleSquares,
     Scales,
     TrailScales,
+    Custom(Array<f64, Dim<[usize; 2]>>)
+}
+
+pub enum Orientation {
+    Vertical, Horizontal
+}
+
+pub enum DiagonalDirection {
+    DownRight,
+    UpRight,
+}
+
+pub enum Increase {
+    Linear(u8),
+    Exponential(u8),
 }
 
 impl OrderedStrategy {
@@ -195,8 +215,8 @@ impl OrderedStrategy {
                 ].reversed_axes();
                 stars_arr / 9.
             },
-            Self::Wavy => {
-                let stars_arr = array![
+            Self::Wavy(orientation) => {
+                let mut stars_arr = array![
                     [1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, 34.0],
                     [34.0, 21.0, 13.0, 8.0, 5.0, 3.0, 2.0, 1.0, 1.0],
                     [1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, 34.0],
@@ -206,7 +226,11 @@ impl OrderedStrategy {
                     [1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, 34.0],
                     [34.0, 21.0, 13.0, 8.0, 5.0, 3.0, 2.0, 1.0, 1.0],
                     [1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, 34.0],
-                ].reversed_axes();
+                ];
+                if let Orientation::Vertical = orientation {
+                    stars_arr = stars_arr.reversed_axes();
+                }
+
                 stars_arr / 34.
             },
             Self::BootlegBayer => {
@@ -238,6 +262,39 @@ impl OrderedStrategy {
                     [128., 64., 32., 16., 8., 4., 2., 1., 256.],
                 ].reversed_axes();
                 stars_arr / 256.
+            },
+            Self::DiagonalsN{ n, direction, increase} => {
+                let mut matrix = Array::<f64, _>::zeros((*n as usize, *n as usize));
+
+                let mut numerals = Vec::<f64>::new();
+
+                for i in 0..*n {
+                    numerals.push(match increase {
+                        Increase::Linear(f) => i as f64 * *f as f64,
+                        Increase::Exponential(f) => f.pow(i as u32) as f64,
+                    });
+                }
+
+                if let DiagonalDirection::DownRight = direction {
+                    numerals.reverse();
+                }
+
+                for x in 0..*n {
+                    for y in 0..*n {
+                        let dot = matrix.get_mut((x as usize, y as usize)).unwrap();
+
+                        // This will iterate over the array, and then shift to the right with mapping.
+                        // "% n" handles the mapping.
+                        // x moves laterally through the numerals
+                        // (y * (n-1)) ensures that it will shift correctly.
+                        //
+                        // [0, 1, 2], [2, 0, 1], [1, 2, 0]
+                        // (0, 0) [0], (1, 0) [1], (2, 0) [2], (0, 1) [2], (1,1) [3 % 3 = 0]
+                        *dot = numerals[((y * (n-1) + x) % n) as usize];
+                    }
+                }
+
+                matrix / *numerals.iter().max_by(|a, b| a.total_cmp(b)).expect("[E001] Couldn't compute max in DiagonalsN.")
             },
             Self::DiamondGrid => {
                 let stars_arr = array![
@@ -286,6 +343,7 @@ impl OrderedStrategy {
                 ].reversed_axes();
                 stars_arr / 9.
             },
+            Self::Custom(matrix) => matrix.clone(),
         }
     }
 }

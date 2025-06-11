@@ -361,8 +361,11 @@ mod test {
         image.clone().apply(&Ordered::new(palette.clone(), Static))
             .save(format!("data/dither/static{}.png", postfix))?;
 
-        image.clone().apply(&Ordered::new(palette.clone(), Wavy))
-            .save(format!("data/dither/wavy{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), Wavy(dither::ordered::Orientation::Vertical)))
+            .save(format!("data/dither/wavy-vertical{}.png", postfix))?;
+
+        image.clone().apply(&Ordered::new(palette.clone(), Wavy(dither::ordered::Orientation::Horizontal)))
+            .save(format!("data/dither/wavy-horizontal{}.png", postfix))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), BootlegBayer))
             .save(format!("data/dither/bootleg-bayer{}.png", postfix))?;
@@ -372,6 +375,30 @@ mod test {
 
         image.clone().apply(&Ordered::new(palette.clone(), DiagonalsBig))
             .save(format!("data/dither/diagonals-big{}.png", postfix))?;
+
+        image.clone().apply(&Ordered::new(palette.clone(), DiagonalsN {
+             n: 8,
+             direction: dither::ordered::DiagonalDirection::DownRight,
+             increase: dither::ordered::Increase::Linear(1) 
+        })).save(format!("data/dither/diagonals-n-dr+lin1-8x8{}.png", postfix))?;
+
+        image.clone().apply(&Ordered::new(palette.clone(), DiagonalsN {
+             n: 32,
+             direction: dither::ordered::DiagonalDirection::DownRight,
+             increase: dither::ordered::Increase::Linear(1) 
+        })).save(format!("data/dither/diagonals-n-dr+lin1-32x32{}.png", postfix))?;
+
+        image.clone().apply(&Ordered::new(palette.clone(), DiagonalsN {
+             n: 8,
+             direction: dither::ordered::DiagonalDirection::DownRight,
+             increase: dither::ordered::Increase::Exponential(2) 
+        })).save(format!("data/dither/diagonals-n-dr+exp2-8x8{}.png", postfix))?;
+
+        image.clone().apply(&Ordered::new(palette.clone(), DiagonalsN {
+             n: 32,
+             direction: dither::ordered::DiagonalDirection::DownRight,
+             increase: dither::ordered::Increase::Exponential(2)
+        })).save(format!("data/dither/diagonals-n-dr+exp2-32x32{}.png", postfix))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), DiamondGrid))
             .save(format!("data/dither/diamond-grid{}.png", postfix))?;
