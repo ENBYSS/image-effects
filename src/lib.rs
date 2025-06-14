@@ -343,6 +343,60 @@ mod test {
         image.clone().apply(&Ordered::new(palette.clone(), CheckeredDiamonds(16)))
             .save(format!("data/dither/checkered-diamonds-16x16{}.png", postfix))?;
 
+        image.clone().apply(&Ordered::new(palette.clone(), DiagonalTiles(2)))
+            .save(format!("data/dither/diagonal-tiles-2x2{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), DiagonalTiles(4)))
+            .save(format!("data/dither/diagonal-tiles-4x4{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), DiagonalTiles(8)))
+            .save(format!("data/dither/diagonal-tiles-8x8{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), DiagonalTiles(16)))
+            .save(format!("data/dither/diagonal-tiles-16x16{}.png", postfix))?;
+
+        image.clone().apply(&Ordered::new(palette.clone(), BouncingBowtie(2)))
+            .save(format!("data/dither/bouncing-bowtie-2x2{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), BouncingBowtie(4)))
+            .save(format!("data/dither/bouncing-bowtie-4x4{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), BouncingBowtie(8)))
+            .save(format!("data/dither/bouncing-bowtie-8x8{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), BouncingBowtie(16)))
+            .save(format!("data/dither/bouncing-bowtie-16x16{}.png", postfix))?;
+
+        image.clone().apply(&Ordered::new(palette.clone(), ScanLine(2, dither::ordered::Orientation::Horizontal)))
+            .save(format!("data/dither/scanline-horizontal-2x2{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), ScanLine(4, dither::ordered::Orientation::Horizontal)))
+            .save(format!("data/dither/scanline-horizontal-4x4{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), ScanLine(8, dither::ordered::Orientation::Horizontal)))
+            .save(format!("data/dither/scanline-horizontal-8x8{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), ScanLine(16, dither::ordered::Orientation::Horizontal)))
+            .save(format!("data/dither/scanline-horizontal-16x16{}.png", postfix))?;
+
+        image.clone().apply(&Ordered::new(palette.clone(), ScanLine(2, dither::ordered::Orientation::Vertical)))
+            .save(format!("data/dither/scanline-vertical-2x2{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), ScanLine(4, dither::ordered::Orientation::Vertical)))
+            .save(format!("data/dither/scanline-vertical-4x4{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), ScanLine(8, dither::ordered::Orientation::Vertical)))
+            .save(format!("data/dither/scanline-vertical-8x8{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), ScanLine(16, dither::ordered::Orientation::Vertical)))
+            .save(format!("data/dither/scanline-vertical-16x16{}.png", postfix))?;
+
+        image.clone().apply(&Ordered::new(palette.clone(), Starburst(2)))
+            .save(format!("data/dither/starburst-2x2{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), Starburst(4)))
+            .save(format!("data/dither/starburst-4x4{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), Starburst(8)))
+            .save(format!("data/dither/starburst-8x8{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), Starburst(16)))
+            .save(format!("data/dither/starburst-16x16{}.png", postfix))?;
+
+        image.clone().apply(&Ordered::new(palette.clone(), ShinyBowtie(2)))
+            .save(format!("data/dither/shiny-bowtie-2x2{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), ShinyBowtie(4)))
+            .save(format!("data/dither/shiny-bowtie-4x4{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), ShinyBowtie(8)))
+            .save(format!("data/dither/shiny-bowtie-8x8{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), ShinyBowtie(16)))
+            .save(format!("data/dither/shiny-bowtie-16x16{}.png", postfix))?;
+
         image.clone().apply(&Ordered::new(palette.clone(), Stars))
             .save(format!("data/dither/stars{}.png", postfix))?;
 
@@ -411,6 +465,31 @@ mod test {
 
         image.clone().apply(&Ordered::new(palette.clone(), TrailScales))
             .save(format!("data/dither/trail-scales{}.png", postfix))?;
+
+        // Custom testing
+
+        let n = 8;
+
+        let mut matrix =  Array::<f64, _>::zeros((n, n));
+
+        for x in 0..n {
+            for y in 0..n {
+                let max_c = x.max(y);
+                let min_c = x.min(y);
+                let bigger_coord = (max_c.pow(2) as f64 / (min_c.pow(2)+1) as f64).abs();
+
+                let point = matrix.get_mut((x, y)).unwrap();
+
+                *point = bigger_coord as f64;
+            }
+        }
+
+        matrix = (matrix / (n-1).pow(2) as f64);
+
+        println!("MATRIX:\n {matrix:#?}");
+
+        image.clone().apply(&Ordered::new(palette.clone(), Custom(matrix)))
+            .save(format!("data/dither/custom{}.png", postfix))?;
 
         Ok(())
     }

@@ -31,6 +31,12 @@ pub enum OrderedStrategy {
     SpeckleSquares,
     Scales,
     TrailScales,
+    DiagonalTiles(u8),
+    BouncingBowtie(u8),
+    ScanLine(u8, Orientation),
+    Starburst(u8),
+    ShinyBowtie(u8),
+    Invert(Box<OrderedStrategy>),
     Custom(Array<f64, Dim<[usize; 2]>>)
 }
 
@@ -342,6 +348,100 @@ impl OrderedStrategy {
                     [0., 8., 7., 6., 5., 4., 3., 2., 1., 0.],
                 ].reversed_axes();
                 stars_arr / 9.
+            },
+            Self::DiagonalTiles(n) => {
+                let n = (*n) as usize;
+                let mut matrix =  Array::<f64, _>::zeros((n, n));
+
+                for a in 0..n {
+                    let min = a;
+                    let max = n - a;
+
+                    for i in min..max {
+                        let to_mark = matrix.get_mut((a, i)).unwrap();
+                        *to_mark = (n - i) as f64;
+                        let to_mark = matrix.get_mut((n-a-1, i)).unwrap();
+                        *to_mark = (n - i) as f64;
+
+                        let to_mark = matrix.get_mut((i, a)).unwrap();
+                        *to_mark = (n - i) as f64;
+                        let to_mark = matrix.get_mut((i, n-a-1)).unwrap();
+                        *to_mark = (n - i) as f64;
+                    }
+                }
+
+                matrix / (n as f64)
+            },
+            Self::BouncingBowtie(n) => {
+                let n = *n as usize;
+
+                let mut matrix =  Array::<f64, _>::zeros((n, n));
+
+                for x in 0..n {
+                    for y in 0..n {
+                        let dot = matrix.get_mut((x, y)).unwrap();
+                        *dot = ((n - x - y - 1).pow(2) as isize).abs() as f64;
+                    }
+                }
+
+                matrix / (n.pow(2) as f64)
+            },
+            Self::ScanLine(n, orientation) => {
+                let n = *n as usize;
+
+                let mut matrix =  Array::<f64, _>::zeros((n, n));
+
+                for x in 0..n {
+                    for y in 0..n {
+                        let main_coord = if let Orientation::Vertical = orientation { x } else { y };
+                        let bigger_coord = main_coord.max(n-main_coord);
+
+                        let point = matrix.get_mut((x, y)).unwrap();
+
+                        *point = bigger_coord as f64;
+                    }
+                }
+
+                matrix / n as f64
+            },
+            Self::Starburst(n) => {
+                let n = *n as usize;
+
+                let mut matrix =  Array::<f64, _>::zeros((n, n));
+
+                for x in 0..n {
+                    for y in 0..n {
+                        let bigger_coord = x.min(n-x) * y.min(n-y);
+
+                        let point = matrix.get_mut((x, y)).unwrap();
+
+                        *point = bigger_coord as f64;
+                    }
+                }
+
+                matrix / ((n/2).pow(2) as f64)
+            },
+            Self::ShinyBowtie(n) => {
+                let n = *n as usize;
+
+                let mut matrix =  Array::<f64, _>::zeros((n, n));
+
+                for x in 0..n {
+                    for y in 0..n {
+                        let max_c = x.max(y);
+                        let min_c = x.min(y);
+                        let bigger_coord = (max_c.pow(2) as f64 / (min_c.pow(2)+1) as f64).abs();
+
+                        let point = matrix.get_mut((x, y)).unwrap();
+
+                        *point = bigger_coord as f64;
+                    }
+                }
+
+                matrix / (n-1).pow(2) as f64
+            },
+            Self::Invert(strategy) => {
+                1.0 - &strategy.get_matrix()
             },
             Self::Custom(matrix) => matrix.clone(),
         }
