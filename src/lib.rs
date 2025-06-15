@@ -397,6 +397,15 @@ mod test {
         image.clone().apply(&Ordered::new(palette.clone(), ShinyBowtie(16)))
             .save(format!("data/dither/shiny-bowtie-16x16{}.png", postfix))?;
 
+        image.clone().apply(&Ordered::new(palette.clone(), MarbleTile(2)))
+            .save(format!("data/dither/marble-tile-2x2{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), MarbleTile(4)))
+            .save(format!("data/dither/marble-tile-4x4{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), MarbleTile(8)))
+            .save(format!("data/dither/marble-tile-8x8{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), MarbleTile(16)))
+            .save(format!("data/dither/marble-tile-16x16{}.png", postfix))?;
+
         image.clone().apply(&Ordered::new(palette.clone(), Stars))
             .save(format!("data/dither/stars{}.png", postfix))?;
 
@@ -474,17 +483,15 @@ mod test {
 
         for x in 0..n {
             for y in 0..n {
-                let max_c = x.max(y);
-                let min_c = x.min(y);
-                let bigger_coord = (max_c.pow(2) as f64 / (min_c.pow(2)+1) as f64).abs();
-
-                let point = matrix.get_mut((x, y)).unwrap();
-
-                *point = bigger_coord as f64;
+               let mag = x as isize - y as isize;
+               let point = matrix.get_mut((x, y)).unwrap(); 
+               *point = mag as f64;
             }
         }
 
-        matrix = (matrix / (n-1).pow(2) as f64);
+        matrix = matrix / n as f64;
+        matrix = matrix + 1.;
+        matrix = matrix * 0.5;
 
         println!("MATRIX:\n {matrix:#?}");
 

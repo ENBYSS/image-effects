@@ -36,6 +36,7 @@ pub enum OrderedStrategy {
     ScanLine(u8, Orientation),
     Starburst(u8),
     ShinyBowtie(u8),
+    MarbleTile(u8),
     Invert(Box<OrderedStrategy>),
     Custom(Array<f64, Dim<[usize; 2]>>)
 }
@@ -439,6 +440,23 @@ impl OrderedStrategy {
                 }
 
                 matrix / (n-1).pow(2) as f64
+            },
+            Self::MarbleTile(n) => {
+                let n = *n as usize;
+
+                let mut matrix =  Array::<f64, _>::zeros((n, n));
+
+                for x in 0..n {
+                    for y in 0..n {
+                    let mag = x as isize - y as isize;
+                    let point = matrix.get_mut((x, y)).unwrap(); 
+                    *point = mag as f64;
+                    }
+                }
+
+                matrix = matrix / n as f64;
+                matrix = matrix + 1.;
+                matrix * 0.5
             },
             Self::Invert(strategy) => {
                 1.0 - &strategy.get_matrix()
