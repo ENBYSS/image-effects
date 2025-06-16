@@ -492,6 +492,67 @@ impl Effect<RgbImageRepr> for Ordered {
     }
 }
 
+pub enum MirrorLine {
+    Horizontal,
+    Vertical,
+    Downright,
+    Upright,
+}
+
+pub fn mirror_matrix(matrix: &mut Array<f64, Dim<[usize; 2]>>, mirror_line: MirrorLine) {
+    let (x, y) = matrix.dim();
+
+    if x != y {
+        panic!("Tried to mirror a malformed ordered pattern")
+    }
+
+    if x < 2 {
+        return;
+    }
+
+    if let MirrorLine::Horizontal = mirror_line {
+        for cy in 0..y {
+            for cx in 0..x/2 {
+                let mirrored = {
+                    *matrix.get((cy, x-cx-1)).unwrap()
+                };
+                let pix = matrix.get_mut((cy, cx)).unwrap();
+                *pix = mirrored;
+            }
+        }
+    } else if let MirrorLine::Vertical = mirror_line {
+        for cy in 0..y/2 {
+            for cx in 0..x {
+                let mirrored = {
+                    *matrix.get((y-cy-1, cx)).unwrap()
+                };
+                let pix = matrix.get_mut((cy, cx)).unwrap();
+                *pix = mirrored;
+            }
+        }
+    } else if let MirrorLine::Downright = mirror_line {
+        for cy in 0..y {
+            for cx in 0..x {
+                let mirrored = {
+                    *matrix.get((cx, cy)).unwrap()
+                };
+                let pix = matrix.get_mut((cy, cx)).unwrap();
+                *pix = mirrored;
+            }
+        }
+    } else {
+        for cy in 0..y {
+            for cx in 0..x {
+                let mirrored = {
+                    *matrix.get((y-cy-1, x-cx-1)).unwrap()
+                };
+                let pix = matrix.get_mut((cy, cx)).unwrap();
+                *pix = mirrored;
+            }
+        }
+    }
+}
+
 pub fn apply_ordered_matrix_to_image(mut image: RgbImageRepr, matrix: Array<f64, Dim<[usize; 2]>>, matrix_size: usize, palette: &Vec<Srgb>) -> RgbImageRepr {
     let ydim = image.len();
     let xdim = image.get(0).map(|row| row.len()).unwrap_or(0);
