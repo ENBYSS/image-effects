@@ -38,6 +38,7 @@ pub enum OrderedStrategy {
     ShinyBowtie(u8),
     MarbleTile(u8),
     Invert(Box<OrderedStrategy>),
+    Mirror(Box<OrderedStrategy>, MirrorLine),
     Custom(Array<f64, Dim<[usize; 2]>>)
 }
 
@@ -461,8 +462,21 @@ impl OrderedStrategy {
             Self::Invert(strategy) => {
                 1.0 - &strategy.get_matrix()
             },
+            Self::Mirror(strategy, mirrorline, ) => {
+                let mut matrix = strategy.get_matrix().clone();
+                mirror_matrix(&mut matrix, *mirrorline);
+                matrix
+            },
             Self::Custom(matrix) => matrix.clone(),
         }
+    }
+
+    pub fn invert(self) -> Self {
+        Self::Invert(Box::new(self))
+    }
+
+    pub fn mirror(self, mirror_line: MirrorLine) -> Self {
+        Self::Mirror(Box::new(self), mirror_line)
     }
 }
 
@@ -492,6 +506,7 @@ impl Effect<RgbImageRepr> for Ordered {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum MirrorLine {
     Horizontal,
     Vertical,
