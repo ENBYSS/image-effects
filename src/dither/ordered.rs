@@ -86,7 +86,7 @@ impl OrderedStrategy {
                 let n_half = n / 2;
         
                 let mut matrix =  Array::<f64, _>::zeros((n as usize, n as usize));
-                let step_size = 1.0 / (n_half as f64); // from center to edge, plus one step
+                let step_size = 1.0 / (n as f64); // from center to edge, plus one step
 
                 for x in 0..n {
                     for y in 0..n {
@@ -108,7 +108,7 @@ impl OrderedStrategy {
                 let n_half = n / 2;
         
                 let mut matrix =  Array::<f64, _>::zeros((n as usize, n as usize));
-                let step_size = 1.0 / (n_half as f64); // from center to edge, plus one step
+                let step_size = 1.0 / (n as f64); // from center to edge, plus one step
 
                 for x in 0..n {
                     for y in 0..n {
@@ -125,7 +125,7 @@ impl OrderedStrategy {
                         if x % 2 == 0 && y % 2 == 0 {
                             *point = lum.round();
                         } else {
-                            *point = (1.0 - factor as f64).abs();
+                            *point = lum;
                         }
                     }
                 }
@@ -464,7 +464,7 @@ impl OrderedStrategy {
             },
             Self::Mirror(strategy, mirrorline, ) => {
                 let mut matrix = strategy.get_matrix().clone();
-                mirror_matrix(&mut matrix, *mirrorline);
+                mirrorline.mirror(&mut matrix);
                 matrix
             },
             Self::Custom(matrix) => matrix.clone(),
@@ -507,63 +507,80 @@ impl Effect<RgbImageRepr> for Ordered {
 }
 
 #[derive(Clone, Copy)]
+pub struct Flip(bool);
+
+#[derive(Clone, Copy)]
 pub enum MirrorLine {
-    Horizontal,
-    Vertical,
-    Downright,
-    Upright,
+    Horizontal(Flip),
+    Vertical(Flip),
+    Downright(Flip),
+    Upright(Flip),
 }
 
-pub fn mirror_matrix(matrix: &mut Array<f64, Dim<[usize; 2]>>, mirror_line: MirrorLine) {
-    let (x, y) = matrix.dim();
+impl MirrorLine {
+    pub fn mirror(&self, matrix: &mut Array<f64, Dim<[usize; 2]>>) {
+        let (x, y) = matrix.dim();
 
-    if x != y {
-        panic!("Tried to mirror a malformed ordered pattern")
-    }
+        if x != y {
+            panic!("Tried to mirror a malformed ordered pattern")
+        }
 
-    if x < 2 {
-        return;
-    }
+        if x < 2 {
+            return;
+        }
 
-    if let MirrorLine::Horizontal = mirror_line {
-        for cy in 0..y {
-            for cx in 0..x/2 {
-                let mirrored = {
-                    *matrix.get((cy, x-cx-1)).unwrap()
-                };
-                let pix = matrix.get_mut((cy, cx)).unwrap();
-                *pix = mirrored;
-            }
-        }
-    } else if let MirrorLine::Vertical = mirror_line {
-        for cy in 0..y/2 {
-            for cx in 0..x {
-                let mirrored = {
-                    *matrix.get((y-cy-1, cx)).unwrap()
-                };
-                let pix = matrix.get_mut((cy, cx)).unwrap();
-                *pix = mirrored;
-            }
-        }
-    } else if let MirrorLine::Downright = mirror_line {
-        for cy in 0..y {
-            for cx in 0..x {
-                let mirrored = {
-                    *matrix.get((cx, cy)).unwrap()
-                };
-                let pix = matrix.get_mut((cy, cx)).unwrap();
-                *pix = mirrored;
-            }
-        }
-    } else {
-        for cy in 0..y {
-            for cx in 0..x {
-                let mirrored = {
-                    *matrix.get((y-cy-1, x-cx-1)).unwrap()
-                };
-                let pix = matrix.get_mut((cy, cx)).unwrap();
-                *pix = mirrored;
-            }
+        let mut mirror = |side1: (usize, usize), side2: (usize, usize), flip: &Flip| {
+            let (source, target) = 
+                if flip.0 { (side1, side2) } else { (side2, side1) };
+
+            let mirrored = {
+                *matrix.get(source).unwrap()
+            };
+            let pix = matrix.get_mut(target).unwrap();
+            *pix = mirrored;
+        };
+
+        match self {
+            MirrorLine::Horizontal(flip) => {
+                for cy in 0..y {
+                    for cx in 0..x/2 {
+                        let side1 = (cy, cx);
+                        let side2 = (cy, x-cx-1);
+
+                        mirror(side1, side2, flip);
+                    }
+                }
+            },
+            MirrorLine::Vertical(flip) => {
+                for cy in 0..y/2 {
+                    for cx in 0..x {
+                        let side1 = (cy, cx);
+                        let side2 = (y-cy-1, cx);
+
+                        mirror(side1, side2, flip);
+                    }
+                }
+            },
+            MirrorLine::Downright(flip) => {
+                for cy in 0..y {
+                    for cx in 0..x {
+                        let side1 = (cy, cx);
+                        let side2 = (cx, cy);
+
+                        mirror(side1, side2, flip);
+                    }
+                }
+            },
+            MirrorLine::Upright(flip) => {
+                for cy in 0..y {
+                    for cx in 0..x {
+                        let side1 = (cy, cx);
+                        let side2 = (y-cy-1, x-cx-1);
+
+                        mirror(side1, side2, flip);
+                    }
+                }
+            },
         }
     }
 }
