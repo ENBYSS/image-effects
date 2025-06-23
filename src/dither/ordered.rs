@@ -561,7 +561,7 @@ impl Effect<RgbImageRepr> for Ordered {
 }
 
 #[derive(Clone, Copy)]
-pub struct Flip(bool);
+pub struct Flip(pub bool);
 
 #[derive(Clone, Copy)]
 pub enum MirrorLine {
