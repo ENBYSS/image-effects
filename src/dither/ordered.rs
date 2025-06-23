@@ -11,21 +11,21 @@ use crate::{utils::image::RgbImageRepr, colour::utils::quantize_rgb, effect::Eff
 /// In addition it only modifies each pixel on its own without needing to simultaneously touch/affect other pixels, making it 
 /// easily possible to parallellize.
 pub enum OrderedStrategy {
-    Bayer(u8),
+    Bayer(usize),
     Static,
     Crisscross,
     Trail,
     Grid,
     Stars,
     NewStars,
-    CheckeredDiamonds(u8),
-    Diamonds(u8),
+    CheckeredDiamonds(usize),
+    Diamonds(usize),
     Wavy(Orientation),
     BootlegBayer,
     Diagonals,
     DiagonalsBig,
     DiagonalsN {
-        n: u8,
+        n: usize,
         direction: DiagonalDirection,
         increase: Increase,
     },
@@ -33,14 +33,14 @@ pub enum OrderedStrategy {
     SpeckleSquares,
     Scales,
     TrailScales,
-    DiagonalTiles(u8),
-    BouncingBowtie(u8),
-    ScanLine(u8, Orientation),
-    Starburst(u8),
-    ShinyBowtie(u8),
-    MarbleTile(u8),
+    DiagonalTiles(usize),
+    BouncingBowtie(usize),
+    ScanLine(usize, Orientation),
+    Starburst(usize),
+    ShinyBowtie(usize),
+    MarbleTile(usize),
     CurvePath {
-        n: u8,
+        n: usize,
         amplitude: f64,
         promotion: f64,
         halt_threshold: usize,
@@ -68,7 +68,7 @@ impl OrderedStrategy {
     fn get_matrix(&self) -> Array<f64, Dim<[usize; 2]>> {
         match self {
             Self::Bayer(size) => {
-                fn dither_bayer(n: u8) -> Array<f64, Dim<[usize; 2]>> {
+                fn dither_bayer(n: usize) -> Array<f64, Dim<[usize; 2]>> {
                     if n == 1 {
                         return Array::<f64, _>::zeros((1, 1));
                     }
