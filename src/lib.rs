@@ -148,7 +148,7 @@ pub type GradientMap<'a, Color> = &'a [(Color, f32)];
 
 #[cfg(test)]
 mod test {
-    use std::error::Error;
+    use std::{error::Error, f64::consts::PI};
 
     use image::{DynamicImage, ImageResult, GenericImageView, imageops};
     use ndarray::{array, Array};
@@ -406,6 +406,15 @@ mod test {
         image.clone().apply(&Ordered::new(palette.clone(), MarbleTile(16)))
             .save(format!("data/dither/marble-tile-16x16{}.png", postfix))?;
 
+        image.clone().apply(&Ordered::new(palette.clone(), CurvePath { n: 2, amplitude: 0.3, promotion: 0.005, halt_threshold: 100 }))
+            .save(format!("data/dither/curve-path-2x2{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), CurvePath { n: 4, amplitude: 0.3, promotion: 0.005, halt_threshold: 100 }))
+            .save(format!("data/dither/curve-path-4x4{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), CurvePath { n: 8, amplitude: 0.3, promotion: 0.005, halt_threshold: 100 }))
+            .save(format!("data/dither/curve-path-8x8{}.png", postfix))?;
+        image.clone().apply(&Ordered::new(palette.clone(), CurvePath { n: 16, amplitude: 0.3, promotion: 0.005, halt_threshold: 100 }))
+            .save(format!("data/dither/curve-path-16x16{}.png", postfix))?;
+
         image.clone().apply(&Ordered::new(palette.clone(), Stars))
             .save(format!("data/dither/stars{}.png", postfix))?;
 
@@ -477,23 +486,53 @@ mod test {
 
         // Custom testing
 
-        let n = 8;
+        let n = 32;
+        let amplitude = 0.4;
+        let promotion = 0.01;
+        let halt_threshold = 100;
 
         let mut matrix =  Array::<f64, _>::zeros((n, n));
+        let mut visitor_m = vec![vec![false; n]; n];
+        let curve_end = PI / 2.;
+        let c_factor = curve_end / n as f64;
 
-        for x in 0..n {
-            for y in 0..n {
-               let mag = x as isize - y as isize;
-               let point = matrix.get_mut((x, y)).unwrap(); 
-               *point = mag as f64;
+        let mut i = 0;
+        let mut h = 0;
+
+        while h < halt_threshold || (i % n != 0) {
+            let h_wrap = i / n;
+            let a = amplitude + (h_wrap as f64*promotion);
+            let y_wrap_off = h_wrap as f64 * a;
+
+            let y = (y_wrap_off as f64 + f64::sin(((i%n) as f64 * c_factor * a) % curve_end)) * n as f64;
+            let x = i % n;
+
+            let y = y.round() as usize % n;
+
+            let point = matrix.get_mut((y, x)).unwrap();
+            *point = *point + 1.;
+
+            if visitor_m[y][x] {
+                h = h + 1;
+            } else {
+                h = 0;
+            }
+
+            visitor_m[y][x] = true;
+            i = i + 1;
+        }
+
+        let mut max = 0.0;
+        for cell in matrix.iter() {
+            if *cell > max {
+                max = *cell;
             }
         }
 
-        matrix = matrix / n as f64;
-        matrix = matrix + 1.;
-        matrix = matrix * 0.5;
+        matrix = matrix / max;
 
-        println!("MATRIX:\n {matrix:#?}");
+        // println!("MATRIX:\n {matrix:#?}\nh = {h} - i = {i} - max = {max}");
+        println!("h = {h} - i = {i} - max = {max}");
 
         image.clone().apply(&Ordered::new(palette.clone(), Custom(matrix)))
             .save(format!("data/dither/custom{}.png", postfix))?;

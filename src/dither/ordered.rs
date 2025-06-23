@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 use ndarray::{array, concatenate, Array, Axis, Dim};
 use palette::Srgb;
 
@@ -37,6 +39,12 @@ pub enum OrderedStrategy {
     Starburst(u8),
     ShinyBowtie(u8),
     MarbleTile(u8),
+    CurvePath {
+        n: u8,
+        amplitude: f64,
+        promotion: f64,
+        halt_threshold: usize,
+    },
     Invert(Box<OrderedStrategy>),
     Mirror(Box<OrderedStrategy>, MirrorLine),
     Custom(Array<f64, Dim<[usize; 2]>>)
@@ -459,6 +467,52 @@ impl OrderedStrategy {
                 matrix = matrix + 1.;
                 matrix * 0.5
             },
+            Self::CurvePath { n, amplitude, promotion, halt_threshold } => {
+                let n = *n as usize;
+                let amplitude = *amplitude;
+                let promotion = *promotion;
+                let halt_threshold = *halt_threshold;
+
+                let mut matrix =  Array::<f64, _>::zeros((n, n));
+                let mut visitor_m = vec![vec![false; n]; n];
+                let curve_end = PI / 2.;
+                let c_factor = curve_end / n as f64;
+
+                let mut i = 0;
+                let mut h = 0;
+
+                while h < halt_threshold || (i % n != 0) {
+                    let h_wrap = i / n;
+                    let a = amplitude + (h_wrap as f64*promotion);
+                    let y_wrap_off = h_wrap as f64 * a;
+
+                    let y = (y_wrap_off as f64 + f64::sin(((i%n) as f64 * c_factor * a) % curve_end)) * n as f64;
+                    let x = i % n;
+
+                    let y = y.round() as usize % n;
+
+                    let point = matrix.get_mut((y, x)).unwrap();
+                    *point = *point + 1.;
+
+                    if visitor_m[y][x] {
+                        h = h + 1;
+                    } else {
+                        h = 0;
+                    }
+
+                    visitor_m[y][x] = true;
+                    i = i + 1;
+                }
+
+                let mut max = 0.0;
+                for cell in matrix.iter() {
+                    if *cell > max {
+                        max = *cell;
+                    }
+                }
+
+                matrix / max
+            }
             Self::Invert(strategy) => {
                 1.0 - &strategy.get_matrix()
             },
