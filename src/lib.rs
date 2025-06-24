@@ -156,7 +156,7 @@ mod test {
     use palette::{Srgb, named};
 
     use crate::{
-        colour::utils::ONE_BIT, dither::{ordered::{Ordered, OrderedStrategy::*, Orientation}, ATKINSON, BURKES, FLOYD_STEINBERG, JARVIS_JUDICE_NINKE, SIERRA, SIERRA_LITE, SIERRA_TWO_ROW, STUCKI}, prelude::{palettes::{EIGHT_BIT, WEB_SAFE}, *}
+        colour::utils::ONE_BIT, dither::{ordered::{algorithms::{generate_zigzag_matrix, Wrapping}, Ordered, OrderedStrategy::*, Orientation}, ATKINSON, BURKES, FLOYD_STEINBERG, JARVIS_JUDICE_NINKE, SIERRA, SIERRA_LITE, SIERRA_TWO_ROW, STUCKI}, prelude::{palettes::{EIGHT_BIT, WEB_SAFE}, *}
     };
 
     type UtilResult<T> = Result<T,Box<dyn Error>>;
@@ -485,54 +485,15 @@ mod test {
             .save(format!("data/dither/trail-scales{}.png", postfix))?;
 
         // Custom testing
-
         let n = 32;
-        let amplitude = 0.4;
-        let promotion = 0.01;
         let halt_threshold = 100;
+        let wrapping = Wrapping::All;
+        let magnitude_x = 0.5;
+        let magnitude_y = 0.1;
+        let promotion_x = 0.001;
+        let promotion_y = 0.002;
 
-        let mut matrix =  Array::<f64, _>::zeros((n, n));
-        let mut visitor_m = vec![vec![false; n]; n];
-        let curve_end = PI / 2.;
-        let c_factor = curve_end / n as f64;
-
-        let mut i = 0;
-        let mut h = 0;
-
-        while h < halt_threshold || (i % n != 0) {
-            let h_wrap = i / n;
-            let a = amplitude + (h_wrap as f64*promotion);
-            let y_wrap_off = h_wrap as f64 * a;
-
-            let y = (y_wrap_off as f64 + f64::sin(((i%n) as f64 * c_factor * a) % curve_end)) * n as f64;
-            let x = i % n;
-
-            let y = y.round() as usize % n;
-
-            let point = matrix.get_mut((y, x)).unwrap();
-            *point = *point + 1.;
-
-            if visitor_m[y][x] {
-                h = h + 1;
-            } else {
-                h = 0;
-            }
-
-            visitor_m[y][x] = true;
-            i = i + 1;
-        }
-
-        let mut max = 0.0;
-        for cell in matrix.iter() {
-            if *cell > max {
-                max = *cell;
-            }
-        }
-
-        matrix = matrix / max;
-
-        // println!("MATRIX:\n {matrix:#?}\nh = {h} - i = {i} - max = {max}");
-        println!("h = {h} - i = {i} - max = {max}");
+        let matrix = generate_zigzag_matrix(n, halt_threshold, wrapping, (magnitude_y, magnitude_x), (promotion_y, promotion_x));
 
         image.clone().apply(&Ordered::new(palette.clone(), Custom(matrix)))
             .save(format!("data/dither/custom{}.png", postfix))?;

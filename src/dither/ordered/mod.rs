@@ -3,13 +3,16 @@ use std::f64::consts::PI;
 use ndarray::{array, concatenate, Array, Axis, Dim};
 use palette::Srgb;
 
-use crate::{utils::image::RgbImageRepr, colour::utils::quantize_rgb, effect::Effect};
+use crate::{colour::utils::quantize_rgb, dither::ordered::algorithms::{dither_bayer, generate_curve_path_matrix, generate_zigzag_matrix, Wrapping}, effect::Effect, utils::image::RgbImageRepr};
+
+pub mod algorithms;
 
 /// Represents the _ordered_ method of dithering. Compared to error propagation, this method is less accurate - however it
 /// results in a pattern that can be visually appealing.
 /// 
 /// In addition it only modifies each pixel on its own without needing to simultaneously touch/affect other pixels, making it 
 /// easily possible to parallellize.
+#[derive(Debug, Clone)]
 pub enum OrderedStrategy {
     Bayer(usize),
     Static,
@@ -45,52 +48,42 @@ pub enum OrderedStrategy {
         promotion: f64,
         halt_threshold: usize,
     },
+    ZigZag {
+        n: usize,
+        halt_threshold: usize,
+        wrapping: Wrapping,
+        magnitude: (f64, f64),
+        promotion: (f64, f64),
+    },
     Invert(Box<OrderedStrategy>),
     Mirror(Box<OrderedStrategy>, MirrorLine),
     Custom(Array<f64, Dim<[usize; 2]>>)
 }
 
+#[derive(Debug, Clone)]
 pub enum Orientation {
     Vertical, Horizontal
 }
 
+#[derive(Debug, Clone)]
 pub enum DiagonalDirection {
     DownRight,
     UpRight,
 }
 
+#[derive(Debug, Clone)]
 pub enum Increase {
     Linear(u8),
     Exponential(u8),
 }
 
 impl OrderedStrategy {
-    fn get_matrix(&self) -> Array<f64, Dim<[usize; 2]>> {
+    fn get_matrix(self) -> Array<f64, Dim<[usize; 2]>> {
         match self {
             Self::Bayer(size) => {
-                fn dither_bayer(n: usize) -> Array<f64, Dim<[usize; 2]>> {
-                    if n == 1 {
-                        return Array::<f64, _>::zeros((1, 1));
-                    }
-
-                    let nested_matrix = dither_bayer(n / 2);
-                    let multiplier = n.pow(2) as f64;
-
-                    let first = multiplier * nested_matrix.clone();
-                    let second = multiplier * nested_matrix.clone() + 2.;
-                    let third = multiplier * nested_matrix.clone() + 3.;
-                    let fourth = multiplier * nested_matrix.clone() + 1.;
-
-                    let first_col = concatenate(Axis(0), &[first.view(), third.view()]).unwrap();
-                    let second_col = concatenate(Axis(0), &[second.view(), fourth.view()]).unwrap();
-
-                    (1. / multiplier) * concatenate(Axis(1), &[first_col.view(), second_col.view()]).unwrap()
-                }
-
-                dither_bayer(*size)
+                dither_bayer(size)
             },
             Self::Diamonds(n) => {
-                let n = *n;
                 let n_half = n / 2;
         
                 let mut matrix =  Array::<f64, _>::zeros((n as usize, n as usize));
@@ -112,7 +105,6 @@ impl OrderedStrategy {
                 matrix
             },
             Self::CheckeredDiamonds(n) => {
-                let n = *n;
                 let n_half = n / 2;
         
                 let mut matrix =  Array::<f64, _>::zeros((n as usize, n as usize));
@@ -280,13 +272,13 @@ impl OrderedStrategy {
                 stars_arr / 256.
             },
             Self::DiagonalsN{ n, direction, increase} => {
-                let mut matrix = Array::<f64, _>::zeros((*n as usize, *n as usize));
+                let mut matrix = Array::<f64, _>::zeros((n, n));
 
                 let mut numerals = Vec::<f64>::new();
 
-                for i in 0..*n {
+                for i in 0..n {
                     numerals.push(match increase {
-                        Increase::Linear(f) => i as f64 * *f as f64,
+                        Increase::Linear(f) => i as f64 * f as f64,
                         Increase::Exponential(f) => f.pow(i as u32) as f64,
                     });
                 }
@@ -295,8 +287,8 @@ impl OrderedStrategy {
                     numerals.reverse();
                 }
 
-                for x in 0..*n {
-                    for y in 0..*n {
+                for x in 0..n {
+                    for y in 0..n {
                         let dot = matrix.get_mut((x as usize, y as usize)).unwrap();
 
                         // This will iterate over the array, and then shift to the right with mapping.
@@ -360,7 +352,6 @@ impl OrderedStrategy {
                 stars_arr / 9.
             },
             Self::DiagonalTiles(n) => {
-                let n = (*n) as usize;
                 let mut matrix =  Array::<f64, _>::zeros((n, n));
 
                 for a in 0..n {
@@ -383,8 +374,6 @@ impl OrderedStrategy {
                 matrix / (n as f64)
             },
             Self::BouncingBowtie(n) => {
-                let n = *n as usize;
-
                 let mut matrix =  Array::<f64, _>::zeros((n, n));
 
                 for x in 0..n {
@@ -397,8 +386,6 @@ impl OrderedStrategy {
                 matrix / (n.pow(2) as f64)
             },
             Self::ScanLine(n, orientation) => {
-                let n = *n as usize;
-
                 let mut matrix =  Array::<f64, _>::zeros((n, n));
 
                 for x in 0..n {
@@ -415,8 +402,6 @@ impl OrderedStrategy {
                 matrix / n as f64
             },
             Self::Starburst(n) => {
-                let n = *n as usize;
-
                 let mut matrix =  Array::<f64, _>::zeros((n, n));
 
                 for x in 0..n {
@@ -432,8 +417,6 @@ impl OrderedStrategy {
                 matrix / ((n/2).pow(2) as f64)
             },
             Self::ShinyBowtie(n) => {
-                let n = *n as usize;
-
                 let mut matrix =  Array::<f64, _>::zeros((n, n));
 
                 for x in 0..n {
@@ -451,8 +434,6 @@ impl OrderedStrategy {
                 matrix / (n-1).pow(2) as f64
             },
             Self::MarbleTile(n) => {
-                let n = *n as usize;
-
                 let mut matrix =  Array::<f64, _>::zeros((n, n));
 
                 for x in 0..n {
@@ -468,51 +449,11 @@ impl OrderedStrategy {
                 matrix * 0.5
             },
             Self::CurvePath { n, amplitude, promotion, halt_threshold } => {
-                let n = *n as usize;
-                let amplitude = *amplitude;
-                let promotion = *promotion;
-                let halt_threshold = *halt_threshold;
-
-                let mut matrix =  Array::<f64, _>::zeros((n, n));
-                let mut visitor_m = vec![vec![false; n]; n];
-                let curve_end = PI / 2.;
-                let c_factor = curve_end / n as f64;
-
-                let mut i = 0;
-                let mut h = 0;
-
-                while h < halt_threshold || (i % n != 0) {
-                    let h_wrap = i / n;
-                    let a = amplitude + (h_wrap as f64*promotion);
-                    let y_wrap_off = h_wrap as f64 * a;
-
-                    let y = (y_wrap_off as f64 + f64::sin(((i%n) as f64 * c_factor * a) % curve_end)) * n as f64;
-                    let x = i % n;
-
-                    let y = y.round() as usize % n;
-
-                    let point = matrix.get_mut((y, x)).unwrap();
-                    *point = *point + 1.;
-
-                    if visitor_m[y][x] {
-                        h = h + 1;
-                    } else {
-                        h = 0;
-                    }
-
-                    visitor_m[y][x] = true;
-                    i = i + 1;
-                }
-
-                let mut max = 0.0;
-                for cell in matrix.iter() {
-                    if *cell > max {
-                        max = *cell;
-                    }
-                }
-
-                matrix / max
-            }
+                generate_curve_path_matrix(n, halt_threshold, amplitude, promotion)
+            },
+            Self::ZigZag { n, halt_threshold, wrapping, magnitude, promotion } => {
+                generate_zigzag_matrix(n, halt_threshold, wrapping, magnitude, promotion)
+            },
             Self::Invert(strategy) => {
                 1.0 - &strategy.get_matrix()
             },
@@ -534,6 +475,7 @@ impl OrderedStrategy {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Ordered {
     palette: Vec<Srgb>,
     strategy: OrderedStrategy,
@@ -547,23 +489,23 @@ impl Ordered {
     }
 
 
-    fn dither_matrix(&self) -> Array<f64, Dim<[usize; 2]>> {
+    fn dither_matrix(self) -> Array<f64, Dim<[usize; 2]>> {
         self.strategy.get_matrix()
     }
 }
 
 impl Effect<RgbImageRepr> for Ordered {
     fn affect(&self, mut image: RgbImageRepr) -> RgbImageRepr {
-        let matrix = self.dither_matrix();
+        let matrix = self.clone().dither_matrix();
         let matrix_size = matrix.dim().0;
         apply_ordered_matrix_to_image(image, matrix, matrix_size, &self.palette)
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Flip(pub bool);
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum MirrorLine {
     Horizontal(Flip),
     Vertical(Flip),
