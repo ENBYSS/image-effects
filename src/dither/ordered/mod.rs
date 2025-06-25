@@ -3,7 +3,7 @@ use std::f64::consts::PI;
 use ndarray::{array, concatenate, Array, Axis, Dim};
 use palette::Srgb;
 
-use crate::{colour::utils::quantize_rgb, dither::ordered::algorithms::{dither_bayer, generate_curve_path_matrix, generate_zigzag_matrix, Wrapping}, effect::Effect, utils::image::RgbImageRepr};
+use crate::{colour::utils::quantize_rgb, dither::ordered::algorithms::{dither_bayer, generate_broken_spiral_matrix, generate_curve_path_matrix, generate_modulosnake, generate_zigzag_matrix, Wrapping}, effect::Effect, utils::image::RgbImageRepr};
 
 pub mod algorithms;
 
@@ -54,6 +54,19 @@ pub enum OrderedStrategy {
         wrapping: Wrapping,
         magnitude: (f64, f64),
         promotion: (f64, f64),
+    },
+    BrokenSpiral {
+        n: usize,
+        base_step: (f64, f64),
+        oob_threshold: usize,
+        increment_by: f64,
+        increment_in: usize
+    },
+    ModuloSnake {
+        n : usize,
+        increment_by: f64,
+        modulo: usize,
+        iterations: usize,
     },
     Invert(Box<OrderedStrategy>),
     Mirror(Box<OrderedStrategy>, MirrorLine),
@@ -454,6 +467,12 @@ impl OrderedStrategy {
             Self::ZigZag { n, halt_threshold, wrapping, magnitude, promotion } => {
                 generate_zigzag_matrix(n, halt_threshold, wrapping, magnitude, promotion)
             },
+            Self::BrokenSpiral { n, base_step, oob_threshold, increment_by, increment_in } => {
+                generate_broken_spiral_matrix(n, base_step, oob_threshold, increment_by, increment_in)
+            },
+            Self::ModuloSnake { n, increment_by, modulo, iterations } => {
+                generate_modulosnake(n, increment_by, modulo, iterations)
+            }
             Self::Invert(strategy) => {
                 1.0 - &strategy.get_matrix()
             },

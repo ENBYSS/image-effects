@@ -156,7 +156,7 @@ mod test {
     use palette::{Srgb, named};
 
     use crate::{
-        colour::utils::ONE_BIT, dither::{ordered::{algorithms::{generate_zigzag_matrix, Wrapping}, Ordered, OrderedStrategy::*, Orientation}, ATKINSON, BURKES, FLOYD_STEINBERG, JARVIS_JUDICE_NINKE, SIERRA, SIERRA_LITE, SIERRA_TWO_ROW, STUCKI}, prelude::{palettes::{EIGHT_BIT, WEB_SAFE}, *}
+        colour::utils::ONE_BIT, dither::{ordered::{algorithms::{generate_broken_spiral_matrix, generate_modulosnake, generate_zigzag_matrix, Wrapping}, Ordered, OrderedStrategy::*, Orientation}, ATKINSON, BURKES, FLOYD_STEINBERG, JARVIS_JUDICE_NINKE, SIERRA, SIERRA_LITE, SIERRA_TWO_ROW, STUCKI}, prelude::{palettes::{EIGHT_BIT, WEB_SAFE}, *}
     };
 
     type UtilResult<T> = Result<T,Box<dyn Error>>;
@@ -415,6 +415,10 @@ mod test {
         image.clone().apply(&Ordered::new(palette.clone(), CurvePath { n: 16, amplitude: 0.3, promotion: 0.005, halt_threshold: 100 }))
             .save(format!("data/dither/curve-path-16x16{}.png", postfix))?;
 
+        // zigzag
+        // broken-spiral
+        // modulosnake
+
         image.clone().apply(&Ordered::new(palette.clone(), Stars))
             .save(format!("data/dither/stars{}.png", postfix))?;
 
@@ -486,14 +490,11 @@ mod test {
 
         // Custom testing
         let n = 32;
-        let halt_threshold = 100;
-        let wrapping = Wrapping::All;
-        let magnitude_x = 0.5;
-        let magnitude_y = 0.1;
-        let promotion_x = 0.001;
-        let promotion_y = 0.002;
+        let increment_by = 0.8;
+        let modulo = 10;
+        let iterations = 3;
 
-        let matrix = generate_zigzag_matrix(n, halt_threshold, wrapping, (magnitude_y, magnitude_x), (promotion_y, promotion_x));
+        let matrix = generate_modulosnake(n, increment_by, modulo, iterations);
 
         image.clone().apply(&Ordered::new(palette.clone(), Custom(matrix)))
             .save(format!("data/dither/custom{}.png", postfix))?;
