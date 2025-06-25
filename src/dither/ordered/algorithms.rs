@@ -267,7 +267,7 @@ pub fn generate_broken_spiral_matrix(n: usize, base_step: (f64, f64), oob_thresh
                 while draw_loc <= max {
                     let p_coord = if move_in_x { (other_coord as usize, draw_loc as usize) } else { (draw_loc as usize, other_coord as usize) };
                     let point = matrix.get_mut(p_coord).unwrap();
-                    *point = *point + get_magnitude(increment_by, increment_every, moves);
+                    *point = (*point + get_magnitude(increment_by, increment_every, moves)).abs();
                     // println!("{og_loc:?} - {loc:?} | incrementing: {p_coord:?} to {point}");
                     draw_loc = draw_loc + if move_in_x { base_step.1 / m } else { base_step.0 / m };
                     moves = moves + 1;
