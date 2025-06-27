@@ -148,22 +148,20 @@ pub type GradientMap<'a, Color> = &'a [(Color, f32)];
 
 #[cfg(test)]
 mod test {
-    use std::{error::Error, f64::consts::PI};
+    use std::error::Error;
 
     use image::{DynamicImage, ImageResult, GenericImageView, imageops};
-    use ndarray::{array, Array};
-    use num::{Float, Signed};
     use palette::{Srgb, named};
 
     use crate::{
-        colour::utils::ONE_BIT, dither::{ordered::{algorithms::{generate_broken_spiral_matrix, generate_modulosnake, generate_zigzag_matrix, Wrapping}, Ordered, OrderedStrategy::*, Orientation}, ATKINSON, BURKES, FLOYD_STEINBERG, JARVIS_JUDICE_NINKE, SIERRA, SIERRA_LITE, SIERRA_TWO_ROW, STUCKI}, prelude::{palettes::{EIGHT_BIT, WEB_SAFE}, *}
+        colour::utils::ONE_BIT, dither::{ordered::{algorithms::{generate_modulosnake}, Ordered, OrderedStrategy::*}, ATKINSON, BURKES, FLOYD_STEINBERG, JARVIS_JUDICE_NINKE, SIERRA, SIERRA_LITE, SIERRA_TWO_ROW, STUCKI}, prelude::{palettes::{EIGHT_BIT, WEB_SAFE}, *}
     };
 
     type UtilResult<T> = Result<T,Box<dyn Error>>;
 
     // From Unsplash, and more specifically Ravi Sharma.
     // https://unsplash.com/photos/sun-peeping-on-ice-mountain-hNv5s6NEYig
-    const IMAGE_URL: &'static str = "https://images.unsplash.com/photo-1580826237584-fda5b612e1bc?q=80&w=1827&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+    const IMAGE_URL: &str = "https://images.unsplash.com/photo-1580826237584-fda5b612e1bc?q=80&w=1827&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
     const MAX_DIM: Option<usize> = Some(500);
 
     fn get_image() -> UtilResult<DynamicImage> {
@@ -199,28 +197,28 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn experiment_test() -> UtilResult<()> {
-        let stars_arr = array![
-            [7., 6., 5., 4., 3., 2., 1., 2., 3., 4., 5., 6., 7.],
-            [6., 4., 2., 1., 2., 1., 2., 1., 2., 1., 2., 4., 6.],
-            [5., 4., 1., 0., 1., 0., 3., 0., 1., 0., 1., 4., 5.],
-            [4., 3., 2., 1., 0., 1., 4., 1., 0., 1., 2., 3., 4.],
-            [3., 2., 1., 0., 1., 2., 5., 2., 1., 0., 1., 2., 3.],
-            [2., 1., 0., 1., 2., 4., 6., 4., 2., 1., 0., 1., 2.],
-            [1., 2., 3., 4., 5., 6., 7., 6., 5., 4., 3., 2., 1.],
-            [2., 1., 0., 1., 2., 4., 6., 4., 2., 1., 0., 1., 2.],
-            [3., 2., 1., 0., 1., 2., 5., 2., 1., 0., 1., 2., 3.],
-            [4., 3., 2., 1., 0., 1., 4., 1., 0., 1., 2., 3., 4.],
-            [5., 4., 1., 0., 1., 0., 3., 0., 1., 0., 1., 4., 5.],
-            [6., 4., 2., 1., 2., 1., 2., 1., 2., 1., 2., 4., 6.],
-            [7., 6., 5., 4., 3., 2., 1., 2., 3., 4., 5., 6., 7.],
-        ];
+    // #[test]
+    // fn experiment_test() -> UtilResult<()> {
+    //     let stars_arr = array![
+    //         [7., 6., 5., 4., 3., 2., 1., 2., 3., 4., 5., 6., 7.],
+    //         [6., 4., 2., 1., 2., 1., 2., 1., 2., 1., 2., 4., 6.],
+    //         [5., 4., 1., 0., 1., 0., 3., 0., 1., 0., 1., 4., 5.],
+    //         [4., 3., 2., 1., 0., 1., 4., 1., 0., 1., 2., 3., 4.],
+    //         [3., 2., 1., 0., 1., 2., 5., 2., 1., 0., 1., 2., 3.],
+    //         [2., 1., 0., 1., 2., 4., 6., 4., 2., 1., 0., 1., 2.],
+    //         [1., 2., 3., 4., 5., 6., 7., 6., 5., 4., 3., 2., 1.],
+    //         [2., 1., 0., 1., 2., 4., 6., 4., 2., 1., 0., 1., 2.],
+    //         [3., 2., 1., 0., 1., 2., 5., 2., 1., 0., 1., 2., 3.],
+    //         [4., 3., 2., 1., 0., 1., 4., 1., 0., 1., 2., 3., 4.],
+    //         [5., 4., 1., 0., 1., 0., 3., 0., 1., 0., 1., 4., 5.],
+    //         [6., 4., 2., 1., 2., 1., 2., 1., 2., 1., 2., 4., 6.],
+    //         [7., 6., 5., 4., 3., 2., 1., 2., 3., 4., 5., 6., 7.],
+    //     ];
 
-        let normalized = stars_arr / 7.;
+    //     let normalized = stars_arr / 7.;
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     #[test]
     fn filter_effects_test() -> UtilResult<()> {
@@ -321,172 +319,172 @@ mod test {
         }
 
         image.clone().apply(&Ordered::new(palette.clone(), Bayer(2)))
-            .save(format!("data/dither/bayer-2x2{}.png", postfix))?;
+            .save(format!("data/dither/bayer-2x2{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), Bayer(4)))
-            .save(format!("data/dither/bayer-4x4{}.png", postfix))?;
+            .save(format!("data/dither/bayer-4x4{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), Bayer(8)))
-            .save(format!("data/dither/bayer-8x8{}.png", postfix))?;
+            .save(format!("data/dither/bayer-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), Bayer(16)))
-            .save(format!("data/dither/bayer-16x16{}.png", postfix))?;
+            .save(format!("data/dither/bayer-16x16{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), Diamonds(8)))
-            .save(format!("data/dither/diamonds-8x8{}.png", postfix))?;
+            .save(format!("data/dither/diamonds-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), Diamonds(12)))
-            .save(format!("data/dither/diamonds-12x12{}.png", postfix))?;
+            .save(format!("data/dither/diamonds-12x12{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), Diamonds(16)))
-            .save(format!("data/dither/diamonds-16x16{}.png", postfix))?;
+            .save(format!("data/dither/diamonds-16x16{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), CheckeredDiamonds(8)))
-            .save(format!("data/dither/checkered-diamonds-8x8{}.png", postfix))?;
+            .save(format!("data/dither/checkered-diamonds-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), CheckeredDiamonds(12)))
-            .save(format!("data/dither/checkered-diamonds-12x12{}.png", postfix))?;
+            .save(format!("data/dither/checkered-diamonds-12x12{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), CheckeredDiamonds(16)))
-            .save(format!("data/dither/checkered-diamonds-16x16{}.png", postfix))?;
+            .save(format!("data/dither/checkered-diamonds-16x16{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), DiagonalTiles(2)))
-            .save(format!("data/dither/diagonal-tiles-2x2{}.png", postfix))?;
+            .save(format!("data/dither/diagonal-tiles-2x2{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), DiagonalTiles(4)))
-            .save(format!("data/dither/diagonal-tiles-4x4{}.png", postfix))?;
+            .save(format!("data/dither/diagonal-tiles-4x4{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), DiagonalTiles(8)))
-            .save(format!("data/dither/diagonal-tiles-8x8{}.png", postfix))?;
+            .save(format!("data/dither/diagonal-tiles-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), DiagonalTiles(16)))
-            .save(format!("data/dither/diagonal-tiles-16x16{}.png", postfix))?;
+            .save(format!("data/dither/diagonal-tiles-16x16{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), BouncingBowtie(2)))
-            .save(format!("data/dither/bouncing-bowtie-2x2{}.png", postfix))?;
+            .save(format!("data/dither/bouncing-bowtie-2x2{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), BouncingBowtie(4)))
-            .save(format!("data/dither/bouncing-bowtie-4x4{}.png", postfix))?;
+            .save(format!("data/dither/bouncing-bowtie-4x4{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), BouncingBowtie(8)))
-            .save(format!("data/dither/bouncing-bowtie-8x8{}.png", postfix))?;
+            .save(format!("data/dither/bouncing-bowtie-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), BouncingBowtie(16)))
-            .save(format!("data/dither/bouncing-bowtie-16x16{}.png", postfix))?;
+            .save(format!("data/dither/bouncing-bowtie-16x16{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), ScanLine(2, dither::ordered::Orientation::Horizontal)))
-            .save(format!("data/dither/scanline-horizontal-2x2{}.png", postfix))?;
+            .save(format!("data/dither/scanline-horizontal-2x2{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), ScanLine(4, dither::ordered::Orientation::Horizontal)))
-            .save(format!("data/dither/scanline-horizontal-4x4{}.png", postfix))?;
+            .save(format!("data/dither/scanline-horizontal-4x4{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), ScanLine(8, dither::ordered::Orientation::Horizontal)))
-            .save(format!("data/dither/scanline-horizontal-8x8{}.png", postfix))?;
+            .save(format!("data/dither/scanline-horizontal-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), ScanLine(16, dither::ordered::Orientation::Horizontal)))
-            .save(format!("data/dither/scanline-horizontal-16x16{}.png", postfix))?;
+            .save(format!("data/dither/scanline-horizontal-16x16{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), ScanLine(2, dither::ordered::Orientation::Vertical)))
-            .save(format!("data/dither/scanline-vertical-2x2{}.png", postfix))?;
+            .save(format!("data/dither/scanline-vertical-2x2{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), ScanLine(4, dither::ordered::Orientation::Vertical)))
-            .save(format!("data/dither/scanline-vertical-4x4{}.png", postfix))?;
+            .save(format!("data/dither/scanline-vertical-4x4{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), ScanLine(8, dither::ordered::Orientation::Vertical)))
-            .save(format!("data/dither/scanline-vertical-8x8{}.png", postfix))?;
+            .save(format!("data/dither/scanline-vertical-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), ScanLine(16, dither::ordered::Orientation::Vertical)))
-            .save(format!("data/dither/scanline-vertical-16x16{}.png", postfix))?;
+            .save(format!("data/dither/scanline-vertical-16x16{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), Starburst(2)))
-            .save(format!("data/dither/starburst-2x2{}.png", postfix))?;
+            .save(format!("data/dither/starburst-2x2{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), Starburst(4)))
-            .save(format!("data/dither/starburst-4x4{}.png", postfix))?;
+            .save(format!("data/dither/starburst-4x4{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), Starburst(8)))
-            .save(format!("data/dither/starburst-8x8{}.png", postfix))?;
+            .save(format!("data/dither/starburst-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), Starburst(16)))
-            .save(format!("data/dither/starburst-16x16{}.png", postfix))?;
+            .save(format!("data/dither/starburst-16x16{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), ShinyBowtie(2)))
-            .save(format!("data/dither/shiny-bowtie-2x2{}.png", postfix))?;
+            .save(format!("data/dither/shiny-bowtie-2x2{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), ShinyBowtie(4)))
-            .save(format!("data/dither/shiny-bowtie-4x4{}.png", postfix))?;
+            .save(format!("data/dither/shiny-bowtie-4x4{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), ShinyBowtie(8)))
-            .save(format!("data/dither/shiny-bowtie-8x8{}.png", postfix))?;
+            .save(format!("data/dither/shiny-bowtie-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), ShinyBowtie(16)))
-            .save(format!("data/dither/shiny-bowtie-16x16{}.png", postfix))?;
+            .save(format!("data/dither/shiny-bowtie-16x16{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), MarbleTile(2)))
-            .save(format!("data/dither/marble-tile-2x2{}.png", postfix))?;
+            .save(format!("data/dither/marble-tile-2x2{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), MarbleTile(4)))
-            .save(format!("data/dither/marble-tile-4x4{}.png", postfix))?;
+            .save(format!("data/dither/marble-tile-4x4{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), MarbleTile(8)))
-            .save(format!("data/dither/marble-tile-8x8{}.png", postfix))?;
+            .save(format!("data/dither/marble-tile-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), MarbleTile(16)))
-            .save(format!("data/dither/marble-tile-16x16{}.png", postfix))?;
+            .save(format!("data/dither/marble-tile-16x16{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), CurvePath { n: 2, amplitude: 0.3, promotion: 0.005, halt_threshold: 100 }))
-            .save(format!("data/dither/curve-path-2x2{}.png", postfix))?;
+            .save(format!("data/dither/curve-path-2x2{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), CurvePath { n: 4, amplitude: 0.3, promotion: 0.005, halt_threshold: 100 }))
-            .save(format!("data/dither/curve-path-4x4{}.png", postfix))?;
+            .save(format!("data/dither/curve-path-4x4{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), CurvePath { n: 8, amplitude: 0.3, promotion: 0.005, halt_threshold: 100 }))
-            .save(format!("data/dither/curve-path-8x8{}.png", postfix))?;
+            .save(format!("data/dither/curve-path-8x8{postfix}.png"))?;
         image.clone().apply(&Ordered::new(palette.clone(), CurvePath { n: 16, amplitude: 0.3, promotion: 0.005, halt_threshold: 100 }))
-            .save(format!("data/dither/curve-path-16x16{}.png", postfix))?;
+            .save(format!("data/dither/curve-path-16x16{postfix}.png"))?;
 
         // zigzag
         // broken-spiral
         // modulosnake
 
         image.clone().apply(&Ordered::new(palette.clone(), Stars))
-            .save(format!("data/dither/stars{}.png", postfix))?;
+            .save(format!("data/dither/stars{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), NewStars))
-            .save(format!("data/dither/new-stars{}.png", postfix))?;
+            .save(format!("data/dither/new-stars{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), Grid))
-            .save(format!("data/dither/grid{}.png", postfix))?;
+            .save(format!("data/dither/grid{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), Trail))
-            .save(format!("data/dither/trail{}.png", postfix))?;
+            .save(format!("data/dither/trail{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), Crisscross))
-            .save(format!("data/dither/crisscross{}.png", postfix))?;
+            .save(format!("data/dither/crisscross{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), Static))
-            .save(format!("data/dither/static{}.png", postfix))?;
+            .save(format!("data/dither/static{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), Wavy(dither::ordered::Orientation::Vertical)))
-            .save(format!("data/dither/wavy-vertical{}.png", postfix))?;
+            .save(format!("data/dither/wavy-vertical{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), Wavy(dither::ordered::Orientation::Horizontal)))
-            .save(format!("data/dither/wavy-horizontal{}.png", postfix))?;
+            .save(format!("data/dither/wavy-horizontal{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), BootlegBayer))
-            .save(format!("data/dither/bootleg-bayer{}.png", postfix))?;
+            .save(format!("data/dither/bootleg-bayer{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), Diagonals))
-            .save(format!("data/dither/diagonals{}.png", postfix))?;
+            .save(format!("data/dither/diagonals{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), DiagonalsBig))
-            .save(format!("data/dither/diagonals-big{}.png", postfix))?;
+            .save(format!("data/dither/diagonals-big{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), DiagonalsN {
              n: 8,
              direction: dither::ordered::DiagonalDirection::DownRight,
              increase: dither::ordered::Increase::Linear(1) 
-        })).save(format!("data/dither/diagonals-n-dr+lin1-8x8{}.png", postfix))?;
+        })).save(format!("data/dither/diagonals-n-dr+lin1-8x8{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), DiagonalsN {
              n: 32,
              direction: dither::ordered::DiagonalDirection::DownRight,
              increase: dither::ordered::Increase::Linear(1) 
-        })).save(format!("data/dither/diagonals-n-dr+lin1-32x32{}.png", postfix))?;
+        })).save(format!("data/dither/diagonals-n-dr+lin1-32x32{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), DiagonalsN {
              n: 8,
              direction: dither::ordered::DiagonalDirection::DownRight,
              increase: dither::ordered::Increase::Exponential(2) 
-        })).save(format!("data/dither/diagonals-n-dr+exp2-8x8{}.png", postfix))?;
+        })).save(format!("data/dither/diagonals-n-dr+exp2-8x8{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), DiagonalsN {
              n: 32,
              direction: dither::ordered::DiagonalDirection::DownRight,
              increase: dither::ordered::Increase::Exponential(2)
-        })).save(format!("data/dither/diagonals-n-dr+exp2-32x32{}.png", postfix))?;
+        })).save(format!("data/dither/diagonals-n-dr+exp2-32x32{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), DiamondGrid))
-            .save(format!("data/dither/diamond-grid{}.png", postfix))?;
+            .save(format!("data/dither/diamond-grid{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), SpeckleSquares))
-            .save(format!("data/dither/speckle-squares{}.png", postfix))?;
+            .save(format!("data/dither/speckle-squares{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), Scales))
-            .save(format!("data/dither/scales{}.png", postfix))?;
+            .save(format!("data/dither/scales{postfix}.png"))?;
 
         image.clone().apply(&Ordered::new(palette.clone(), TrailScales))
-            .save(format!("data/dither/trail-scales{}.png", postfix))?;
+            .save(format!("data/dither/trail-scales{postfix}.png"))?;
 
         // Custom testing
         let n = 32;
@@ -497,7 +495,7 @@ mod test {
         let matrix = generate_modulosnake(n, increment_by, modulo, iterations);
 
         image.clone().apply(&Ordered::new(palette.clone(), Custom(matrix)))
-            .save(format!("data/dither/custom{}.png", postfix))?;
+            .save(format!("data/dither/custom{postfix}.png"))?;
 
         Ok(())
     }

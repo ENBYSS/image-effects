@@ -82,15 +82,13 @@ fn _gradient_map_u8<U>(rgb: [u8; 3], gradient: &[(U, f32)]) -> Option<U>
     let color = Lch::from_color(color);
     let l = color.l / 100.0;
 
-    let mut gradient = Vec::from(gradient.clone());
+    let mut gradient = Vec::from(gradient);
     gradient.sort_by(|a, b|
         a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let index = gradient.iter().position(|(_, threshold)| l < *threshold);
 
-    if index.is_none() { return None };
-
-    let index = index.unwrap();
+    let index = index?;
 
     let prev_col = gradient.get(index - 1);
     let curr_col = gradient.get(index);
@@ -117,7 +115,7 @@ fn _gradient_map_u8<U>(rgb: [u8; 3], gradient: &[(U, f32)]) -> Option<U>
         let new_col = p_col.mix(c_col, ratio);
         let new_col: Srgb = new_col.into_color();
 
-        Some(U::from(new_col.into()))
+        Some(U::from(new_col))
 
     } else if curr_col.is_some() {
         curr_col.map(|tup| tup.0)

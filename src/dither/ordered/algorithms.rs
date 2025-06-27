@@ -68,22 +68,22 @@ pub fn generate_curve_path_matrix(n: usize, halt_threshold: usize, amplitude: f6
         let a = amplitude + (h_wrap as f64*promotion);
         let y_wrap_off = h_wrap as f64 * a;
 
-        let y = (y_wrap_off as f64 + f64::sin(((i%n) as f64 * c_factor * a) % curve_end)) * n as f64;
+        let y = (y_wrap_off + f64::sin(((i%n) as f64 * c_factor * a) % curve_end)) * n as f64;
         let x = i % n;
 
         let y = y.round() as usize % n;
 
         let point = matrix.get_mut((y, x)).unwrap();
-        *point = *point + 1.;
+        *point += 1.;
 
         if visitor_m[y][x] {
-            h = h + 1;
+            h += 1;
         } else {
             h = 0;
         }
 
         visitor_m[y][x] = true;
-        i = i + 1;
+        i += 1;
     }
 
     normalize_matrix(matrix)
@@ -96,7 +96,6 @@ pub fn generate_zigzag_matrix(n: usize, halt_threshold: usize, wrapping: Wrappin
     let mut matrix =  gen_n_size_matrix(n);
     let mut visitor_m = gen_n_size_visitor_matrix(n);
 
-    let mut i = 0;
     let mut h = 0;
     let mut curr = (0., 0.);
     let mut disp = (magnitude_y, magnitude_x);
@@ -123,10 +122,10 @@ pub fn generate_zigzag_matrix(n: usize, halt_threshold: usize, wrapping: Wrappin
         // }
 
         let point = point.unwrap();
-        *point = *point + 1.;
+        *point += 1.;
 
         if visitor_m[yi][xi] {
-            h = h + 1;
+            h += 1;
         } else {
             h = 0;
         }
@@ -138,7 +137,7 @@ pub fn generate_zigzag_matrix(n: usize, halt_threshold: usize, wrapping: Wrappin
                     disp.0 = magnitude_y; 
                     y = 0.;
                 } else if yi >= (n - 1) {
-                    disp.0 = magnitude_y * -1.;
+                    disp.0 = -magnitude_y;
                 }
 
                 let magnitude_x = magnitude_x + wrap_x * promotion_x;
@@ -154,7 +153,7 @@ pub fn generate_zigzag_matrix(n: usize, halt_threshold: usize, wrapping: Wrappin
                     disp.1 = magnitude_x; 
                     x = 0.;
                 } else if xi >= (n - 1) {
-                    disp.1 = magnitude_x * -1.;
+                    disp.1 = -magnitude_x;
                 }
 
                 let magnitude_y = magnitude_y + wrap_y * promotion_y;
@@ -177,14 +176,14 @@ pub fn generate_zigzag_matrix(n: usize, halt_threshold: usize, wrapping: Wrappin
                     disp.0 = magnitude_y; 
                     y = 0.;
                 } else if yi >= (n - 1) {
-                    disp.0 = magnitude_y * -1.;
+                    disp.0 = -magnitude_y;
                 }
 
                 if x + disp.1 < 0.0 {
                     disp.1 = magnitude_x; 
                     x = 0.;
                 } else if xi >= (n - 1) {
-                    disp.1 = magnitude_x * -1.;
+                    disp.1 = -magnitude_x;
                 }
 
                 curr = (
@@ -193,8 +192,6 @@ pub fn generate_zigzag_matrix(n: usize, halt_threshold: usize, wrapping: Wrappin
                 );
             },
         }
-
-        i = i + 1;
     }
 
     normalize_matrix(matrix)
@@ -220,16 +217,16 @@ pub fn generate_broken_spiral_matrix(n: usize, base_step: (f64, f64), oob_thresh
         {
             let loc_i = (loc.0 as usize, loc.1 as usize);
             let point = matrix.get_mut((loc_i.0, loc_i.1)).unwrap();
-            *point = *point + get_magnitude(increment_by, increment_every, moves);
+            *point += get_magnitude(increment_by, increment_every, moves);
             // println!("m: {m}, point: {loc_i:?}, point-value: {}", *point);
         }
 
         while o <= oob_threshold {
             let disps = [
-                (-1. * base_step.0 * i as f64, 0.),
+                (-base_step.0 * i as f64, 0.),
                 (0., base_step.1 * i as f64),
                 (base_step.0 * (i+1) as f64, 0.),
-                (0., -1. * base_step.1 * (i+1) as f64),
+                (0., -base_step.1 * (i+1) as f64),
             ];
 
             for disp in disps {
@@ -244,7 +241,7 @@ pub fn generate_broken_spiral_matrix(n: usize, base_step: (f64, f64), oob_thresh
                 let loc_i = (loc.0 as isize, loc.1 as isize);
 
                 if loc_i.0 < 0 || loc_i.1 < 0 || loc_i.0 >= n as isize || loc_i.1 >= n as isize {
-                    o = o + 1;
+                    o += 1;
                     continue;
                 } else {
                     o = 0;
@@ -269,19 +266,19 @@ pub fn generate_broken_spiral_matrix(n: usize, base_step: (f64, f64), oob_thresh
                     let point = matrix.get_mut(p_coord).unwrap();
                     *point = (*point + get_magnitude(increment_by, increment_every, moves)).abs();
                     // println!("{og_loc:?} - {loc:?} | incrementing: {p_coord:?} to {point}");
-                    draw_loc = draw_loc + if move_in_x { base_step.1 / m } else { base_step.0 / m };
-                    moves = moves + 1;
+                    draw_loc += if move_in_x { base_step.1 / m } else { base_step.0 / m };
+                    moves += 1;
                 }
                 // println!("line-done!");
             }
 
-            i = i + 2;
+            i += 2;
         }
         if i < o {
             break;
         }
 
-        m = m + 1.;
+        m += 1.;
     }
 
     // println!("{matrix:#?}");

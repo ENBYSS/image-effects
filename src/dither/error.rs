@@ -118,8 +118,8 @@ impl<'a, 'b> Effect<RgbImageRepr> for ErrorPropagator<'a, 'b, WithPalette> {
                     );
 
                     let pixel = image
-                        .get_mut(y_err as usize)
-                        .and_then(|row| row.get_mut(x_err as usize));
+                        .get_mut(y_err)
+                        .and_then(|row| row.get_mut(x_err));
 
                     if let Some(pixel) = pixel {
                         *pixel = [

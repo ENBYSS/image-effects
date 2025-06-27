@@ -1,6 +1,4 @@
-use std::f64::consts::PI;
-
-use ndarray::{array, concatenate, Array, Axis, Dim};
+use ndarray::{array, Array, Dim};
 use palette::Srgb;
 
 use crate::{colour::utils::quantize_rgb, dither::ordered::algorithms::{dither_bayer, generate_broken_spiral_matrix, generate_curve_path_matrix, generate_modulosnake, generate_zigzag_matrix, Wrapping}, effect::Effect, utils::image::RgbImageRepr};
@@ -99,7 +97,7 @@ impl OrderedStrategy {
             Self::Diamonds(n) => {
                 let n_half = n / 2;
         
-                let mut matrix =  Array::<f64, _>::zeros((n as usize, n as usize));
+                let mut matrix =  Array::<f64, _>::zeros((n, n));
                 let step_size = 1.0 / (n as f64); // from center to edge, plus one step
 
                 for x in 0..n {
@@ -110,8 +108,8 @@ impl OrderedStrategy {
                         // if distance_y > 0 { distance_y = distance_y - 1; }
 
                         let factor = (distance_x + distance_y) as f64 * step_size;
-                        let point = matrix.get_mut((x as usize, y as usize)).unwrap();
-                        *point = (1.0 - factor as f64).abs();
+                        let point = matrix.get_mut((x, y)).unwrap();
+                        *point = (1.0 - factor).abs();
                     }
                 }
 
@@ -120,7 +118,7 @@ impl OrderedStrategy {
             Self::CheckeredDiamonds(n) => {
                 let n_half = n / 2;
         
-                let mut matrix =  Array::<f64, _>::zeros((n as usize, n as usize));
+                let mut matrix =  Array::<f64, _>::zeros((n, n));
                 let step_size = 1.0 / (n as f64); // from center to edge, plus one step
 
                 for x in 0..n {
@@ -131,9 +129,9 @@ impl OrderedStrategy {
                         // if distance_y > 0 { distance_y = distance_y - 1; }
 
                         let factor = (distance_x + distance_y) as f64 * step_size;
-                        let point = matrix.get_mut((x as usize, y as usize)).unwrap();
+                        let point = matrix.get_mut((x, y)).unwrap();
                         
-                        let lum = (1.0 - factor as f64).abs();
+                        let lum = (1.0 - factor).abs();
 
                         if x % 2 == 0 && y % 2 == 0 {
                             *point = lum.round();
@@ -302,7 +300,7 @@ impl OrderedStrategy {
 
                 for x in 0..n {
                     for y in 0..n {
-                        let dot = matrix.get_mut((x as usize, y as usize)).unwrap();
+                        let dot = matrix.get_mut((x, y)).unwrap();
 
                         // This will iterate over the array, and then shift to the right with mapping.
                         // "% n" handles the mapping.
@@ -311,7 +309,7 @@ impl OrderedStrategy {
                         //
                         // [0, 1, 2], [2, 0, 1], [1, 2, 0]
                         // (0, 0) [0], (1, 0) [1], (2, 0) [2], (0, 1) [2], (1,1) [3 % 3 = 0]
-                        *dot = numerals[((y * (n-1) + x) % n) as usize];
+                        *dot = numerals[(y * (n-1) + x) % n];
                     }
                 }
 
@@ -440,7 +438,7 @@ impl OrderedStrategy {
 
                         let point = matrix.get_mut((x, y)).unwrap();
 
-                        *point = bigger_coord as f64;
+                        *point = bigger_coord;
                     }
                 }
 
@@ -457,8 +455,8 @@ impl OrderedStrategy {
                     }
                 }
 
-                matrix = matrix / n as f64;
-                matrix = matrix + 1.;
+                matrix /= n as f64;
+                matrix += 1.;
                 matrix * 0.5
             },
             Self::CurvePath { n, amplitude, promotion, halt_threshold } => {
@@ -514,7 +512,7 @@ impl Ordered {
 }
 
 impl Effect<RgbImageRepr> for Ordered {
-    fn affect(&self, mut image: RgbImageRepr) -> RgbImageRepr {
+    fn affect(&self, image: RgbImageRepr) -> RgbImageRepr {
         let matrix = self.clone().dither_matrix();
         let matrix_size = matrix.dim().0;
         apply_ordered_matrix_to_image(image, matrix, matrix_size, &self.palette)
@@ -600,13 +598,13 @@ impl MirrorLine {
     }
 }
 
-pub fn apply_ordered_matrix_to_image(mut image: RgbImageRepr, matrix: Array<f64, Dim<[usize; 2]>>, matrix_size: usize, palette: &Vec<Srgb>) -> RgbImageRepr {
+pub fn apply_ordered_matrix_to_image(mut image: RgbImageRepr, matrix: Array<f64, Dim<[usize; 2]>>, matrix_size: usize, palette: &[Srgb]) -> RgbImageRepr {
     let ydim = image.len();
-    let xdim = image.get(0).map(|row| row.len()).unwrap_or(0);
+    let xdim = image.first().map(|row| row.len()).unwrap_or(0);
 
-    for y in 0..ydim {
-        for x in 0..xdim {
-            let mut color = Srgb::from(image[y][x]).into_format::<f32>();
+    for (x, rows) in image.iter_mut().enumerate().take(ydim) {
+        for (y, cell) in rows.iter_mut().enumerate().take(xdim) {
+            let mut color = Srgb::from(*cell).into_format::<f32>();
     
             let offset = (1.0 / 3.0)
                 * (matrix
@@ -614,11 +612,11 @@ pub fn apply_ordered_matrix_to_image(mut image: RgbImageRepr, matrix: Array<f64,
                     .unwrap_or(&0.0)
                     - 0.5) as f32;
     
-            color.red = color.red + offset;
-            color.blue = color.blue + offset;
-            color.green = color.green + offset;
+            color.red += offset;
+            color.blue += offset;
+            color.green += offset;
     
-            image[y][x] = quantize_rgb(color, palette).into_format().into();
+            *cell = quantize_rgb(color, palette).into_format().into();
         }
     }
 

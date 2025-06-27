@@ -120,7 +120,7 @@ pub fn ciede2000(lch_a: Colour, lch_b: Colour) -> f32 {
 
     let r_t = -2.0
         * (avg_c_mark.powi(7) / (avg_c_mark.powi(7) + 25_f32.powi(7))).sqrt()
-        * (60.0 * (-1.0 * ((avg_big_h_mark - 275.0) / 25.0).powi(2)).exp()).to_radians().sin();
+        * (60.0 * (-((avg_big_h_mark - 275.0) / 25.0).powi(2)).exp()).to_radians().sin();
 
     // the actual formula
     (

@@ -55,13 +55,14 @@ pub struct Saturate(
 ///
 /// As an example, to turn an image grayscale you could pass the colour black at `0.0` and the colour
 /// white at `1.0`.
+#[derive(Default)]
 pub struct GradientMap {
     map: Vec<(Srgb, f32)>
 }
 
 impl GradientMap {
     pub fn new() -> Self {
-        Self { map: Vec::new() }
+        Self::default()
     }
 
     /// Create a new gradient map from an existing map.
@@ -80,13 +81,14 @@ impl GradientMap {
 ///
 /// This *only* changes the hue - useful for defining a colour
 /// scheme without losing luminance/saturation detail.
+#[derive(Default)]
 pub struct QuantizeHue {
     hues: Vec<f32>
 }
 
 impl QuantizeHue {
     pub fn new() -> Self {
-        Self { hues: Vec::new() }
+        Self::default()
     }
 
     /// Create a `QuantizeHue` effect with the given hues.

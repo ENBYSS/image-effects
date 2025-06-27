@@ -23,15 +23,17 @@ pub fn quantize_hue(original_hue: f32, hues: &[f32]) -> f32 {
     current_hue
 }
 
-pub const ONE_BIT: &'static [Srgb] = &[
+pub const ONE_BIT: &[Srgb] = &[
     Srgb::new(0.0, 0.0, 0.0),
     Srgb::new(1.0, 1.0, 1.0),
 ];
 
+type DistanceFn = fn((f32, f32, f32), (f32, f32, f32)) -> f32; 
+
 fn quantize_colour(
     original: (f32, f32, f32),
     palette: &[(f32, f32, f32)],
-    distance_fn: fn((f32, f32, f32), (f32, f32, f32)) -> f32,
+    distance_fn: DistanceFn,
 ) -> (f32, f32, f32) {
     let mut closest_distance = f32::MAX;
     let mut current_colour = &original;
@@ -53,7 +55,7 @@ fn quantize_colour(
 pub fn quantize_rgb(original_rgb: Srgb, palette: &[Srgb]) -> Srgb {
     let srgb = quantize_colour(
         original_rgb.into_components(),
-        &palette.into_iter().map(|&col| col.into_components()).collect::<Vec<_>>(),
+        &palette.iter().map(|&col| col.into_components()).collect::<Vec<_>>(),
         rgb_weighted_euclidean
     );
 
@@ -84,8 +86,7 @@ pub fn hexcode_to_srgb(value: &str) -> Srgb {
         Srgb::new(r, g, b)
     } else {
         println!(
-            "WARNING! Couldn't convert {} into an RGB value. Returning black.",
-            value
+            "WARNING! Couldn't convert {value} into an RGB value. Returning black."
         );
         Srgb::new(0.0, 0.0, 0.0)
     }

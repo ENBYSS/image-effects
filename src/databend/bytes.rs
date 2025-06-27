@@ -1,8 +1,8 @@
-use std::ops::{Range, RangeBounds};
+use std::ops::RangeBounds;
 
-use rand::{Rng, seq::SliceRandom, rngs::StdRng};
+use rand::{Rng, seq::SliceRandom};
 
-use crate::{prelude::Effect, utils::process_range};
+use crate::utils::process_range;
 
 // Structure
 
@@ -113,15 +113,15 @@ impl<R: RangeBounds<usize>> BendGlobal<R> for Shift {
         let (start, end) = process_range(chunk, whole.len());
 
         if start as isize == 0 && self.shift_by < 0 {
-            panic!("nope");
+            panic!("at start - shift_by smaller than 0");
         } else if end as isize == whole.len() as isize && self.shift_by > 0 {
-            panic!("nope");
+            panic!("at end - shift by bigger than 0");
         } else if end as isize > whole.len() as isize {
-            panic!("nope");
+            panic!("end is beyond limits");
         } else if start as isize + self.shift_by < 0 {
-            panic!("nope");
+            panic!("start would be shifted beyond limits");
         } else if end as isize + self.shift_by > whole.len() as isize {
-            panic!("nope");
+            panic!("end would be shifted beyond limits");
         }
 
         let mut shifted = Vec::new();
@@ -132,11 +132,11 @@ impl<R: RangeBounds<usize>> BendGlobal<R> for Shift {
         if self.shift_by < 0 {
             // shift left
             let mut affected = Vec::new();
-            let affected_start = start - self.shift_by.abs() as usize;
+            let affected_start = start - self.shift_by.unsigned_abs();
             whole[affected_start .. start].clone_into(&mut affected);
 
             whole[affected_start .. affected_start + chunksize].copy_from_slice(&shifted);
-            whole[affected_start + chunksize .. affected_start + chunksize + self.shift_by.abs() as usize].copy_from_slice(&affected);
+            whole[affected_start + chunksize .. affected_start + chunksize + self.shift_by.unsigned_abs()].copy_from_slice(&affected);
         } else {
             // shift right
             let mut affected = Vec::new();
@@ -180,9 +180,9 @@ impl<R: RangeBounds<usize>> BendGlobal<R> for Swap {
         let chunksize = end - start;
 
         if self.block_at + chunksize > whole.len() {
-            panic!("nope");
+            panic!("tried to swap beyond end");
         } else if self.block_at < end && self.block_at >= start {
-            panic!("nope");
+            panic!("can't swap intersecting blocks");
         }
 
         if self.block_at < start {

@@ -8,7 +8,7 @@ pub static EIGHT_BIT: Lazy<Vec<Srgb>> = Lazy::new(|| {
         "000000", "FF0000", "00FF00", "0000FF", "FFFF00", "00FFFF", "FF00FF", "FFFFFF",
     ]
     .into_iter()
-    .map(|color| hexcode_to_srgb(color))
+    .map(hexcode_to_srgb)
     .collect()
 });
 
@@ -40,6 +40,6 @@ pub static WEB_SAFE: Lazy<Vec<Srgb>> = Lazy::new(|| {
         "ffcc99", "ffcccc", "ffccff", "ffff00", "ffff33", "ffff66", "ffff99", "ffffcc", "ffffff",
     ]
     .into_iter()
-    .map(|color| hexcode_to_srgb(color))
+    .map(hexcode_to_srgb)
     .collect()
 });

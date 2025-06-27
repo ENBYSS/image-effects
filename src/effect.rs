@@ -83,7 +83,7 @@ impl<F> Effect<ImageBuffer<Rgb<u8>, Vec<u8>>> for F where F: Effect<RgbImageRepr
     
         let mut img_matrix = vec![vec![[0_u8; 3]; xs]; ys];
     
-        for (i, pixel) in item.pixels().into_iter().enumerate() {
+        for (i, pixel) in item.pixels().enumerate() {
            let (x, y) = map_to_2d(i, xs);
            img_matrix[y][x] = pixel.0;
         }
@@ -105,7 +105,7 @@ impl<F> Effect<ImageBuffer<Rgba<u8>, Vec<u8>>> for F where F: Effect<RgbaImageRe
     
         let mut img_matrix = vec![vec![[0_u8; 4]; xs]; ys];
     
-        for (i, pixel) in item.pixels().into_iter().enumerate() {
+        for (i, pixel) in item.pixels().enumerate() {
            let (x, y) = map_to_2d(i, xs);
            img_matrix[y][x] = pixel.0;
         }

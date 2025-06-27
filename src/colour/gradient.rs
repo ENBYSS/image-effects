@@ -15,7 +15,6 @@ pub trait IntoGradientLch: Sized + IntoColor<Lch> + FromColor<Lch> + Copy {
         let step_size = 100.0 / (shades+1) as f32;
 
         (1..shades)
-            .into_iter()
             .map(|i| {
                 let mut color: Lch = self.into_color();
                 color.l = i as f32 * step_size;
@@ -33,7 +32,6 @@ pub trait IntoGradientHsl: Sized + IntoColor<Hsl> + FromColor<Hsl> + Copy {
         let step_size = 1.0 / (shades+1) as f32;
 
         (1..shades)
-            .into_iter()
             .map(|i| {
                 let mut color: Hsl = self.into_color();
                 color.lightness = i as f32 * step_size;
@@ -51,7 +49,6 @@ pub trait IntoGradientOklch: Sized + IntoColor<Oklch> + FromColor<Oklch> + Copy 
         let step_size = 1.0 / (shades+1) as f32;
 
         (1..shades)
-            .into_iter()
             .map(|i| {
                 let mut color: Oklch = self.into_color();
                 color.l = i as f32 * step_size;
