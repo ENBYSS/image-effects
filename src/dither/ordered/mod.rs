@@ -1,14 +1,47 @@
 use ndarray::{array, Array, Dim};
 use palette::Srgb;
 
-use crate::{colour::utils::quantize_rgb, dither::ordered::algorithms::{dither_bayer, generate_broken_spiral_matrix, generate_curve_path_matrix, generate_modulosnake, generate_zigzag_matrix, Wrapping}, effect::Effect, utils::image::RgbImageRepr};
+use crate::{
+    colour::utils::quantize_rgb,
+    dither::ordered::{
+        algorithms::{
+            bayer::dither_bayer,
+            bouncing_bowtie::bouncing_bowtie,
+            broken_spiral::generate_broken_spiral_matrix,
+            checkered_diamonds::generate_checkered_diamonds,
+            curve_path::generate_curve_path_matrix,
+            diagonal_tiles::generate_diagonal_tiles,
+            diagonals_n::diagonals_n,
+            diamonds::generate_diamonds,
+            hardcoded::{
+                get_bootleg_bayer, get_crisscross, get_diagonals, get_diagonals_big,
+                get_diamond_grid, get_grid, get_new_stars, get_scales, get_speckle_squares,
+                get_stars, get_static, get_trail, get_trail_scales, get_wavy,
+            },
+            marble_tile::generate_marble_tile,
+            modulo_snake::generate_modulosnake,
+            properties::{DiagonalDirection, Increase, Orientation, Wrapping},
+            scanline::generate_scanline,
+            shiny_bowtie::{self, generate_shiny_bowtie},
+            starburst::starburst,
+            zigzag::generate_zigzag_matrix,
+        },
+        tools::{
+            apply_ordered_matrix_to_image, blur::blur_matrix, exponentiate::exponentiate_matrix,
+            mirror::MirrorLine, properties::Rotation, rotate::rotate_matrix,
+        },
+    },
+    effect::Effect,
+    utils::image::RgbImageRepr,
+};
 
 pub mod algorithms;
+pub mod tools;
 
 /// Represents the _ordered_ method of dithering. Compared to error propagation, this method is less accurate - however it
 /// results in a pattern that can be visually appealing.
-/// 
-/// In addition it only modifies each pixel on its own without needing to simultaneously touch/affect other pixels, making it 
+///
+/// In addition it only modifies each pixel on its own without needing to simultaneously touch/affect other pixels, making it
 /// easily possible to parallellize.
 #[derive(Debug, Clone)]
 pub enum OrderedStrategy {
@@ -58,427 +91,108 @@ pub enum OrderedStrategy {
         base_step: (f64, f64),
         oob_threshold: usize,
         increment_by: f64,
-        increment_in: usize
+        increment_in: usize,
     },
     ModuloSnake {
-        n : usize,
+        n: usize,
         increment_by: f64,
         modulo: usize,
         iterations: usize,
     },
+
+    // modifiers
     Invert(Box<OrderedStrategy>),
     Mirror(Box<OrderedStrategy>, MirrorLine),
-    Custom(Array<f64, Dim<[usize; 2]>>)
-}
-
-#[derive(Debug, Clone)]
-pub enum Orientation {
-    Vertical, Horizontal
-}
-
-#[derive(Debug, Clone)]
-pub enum DiagonalDirection {
-    DownRight,
-    UpRight,
-}
-
-#[derive(Debug, Clone)]
-pub enum Increase {
-    Linear(u8),
-    Exponential(u8),
+    Blur(Box<OrderedStrategy>, usize),
+    Exponentiate(Box<OrderedStrategy>, f64),
+    Rotate(Box<OrderedStrategy>, Rotation),
+    Custom(Array<f64, Dim<[usize; 2]>>),
 }
 
 impl OrderedStrategy {
     fn get_matrix(self) -> Array<f64, Dim<[usize; 2]>> {
         match self {
-            Self::Bayer(size) => {
-                dither_bayer(size)
-            },
-            Self::Diamonds(n) => {
-                let n_half = n / 2;
-        
-                let mut matrix =  Array::<f64, _>::zeros((n, n));
-                let step_size = 1.0 / (n as f64); // from center to edge, plus one step
-
-                for x in 0..n {
-                    for y in 0..n {
-                        let distance_x = x.abs_diff(n_half);
-                        let distance_y = y.abs_diff(n_half);
-
-                        // if distance_y > 0 { distance_y = distance_y - 1; }
-
-                        let factor = (distance_x + distance_y) as f64 * step_size;
-                        let point = matrix.get_mut((x, y)).unwrap();
-                        *point = (1.0 - factor).abs();
-                    }
-                }
-
-                matrix
-            },
-            Self::CheckeredDiamonds(n) => {
-                let n_half = n / 2;
-        
-                let mut matrix =  Array::<f64, _>::zeros((n, n));
-                let step_size = 1.0 / (n as f64); // from center to edge, plus one step
-
-                for x in 0..n {
-                    for y in 0..n {
-                        let distance_x = x.abs_diff(n_half);
-                        let distance_y = y.abs_diff(n_half);
-
-                        // if distance_y > 0 { distance_y = distance_y - 1; }
-
-                        let factor = (distance_x + distance_y) as f64 * step_size;
-                        let point = matrix.get_mut((x, y)).unwrap();
-                        
-                        let lum = (1.0 - factor).abs();
-
-                        if x % 2 == 0 && y % 2 == 0 {
-                            *point = lum.round();
-                        } else {
-                            *point = lum;
-                        }
-                    }
-                }
-
-                matrix
-            }
-            Self::Stars => {
-                array![
-                    [0.875, 0.625, 0.5, 0.375, 0.25, 0.125, 0.25, 0.125, 0.25, 0.375, 0.5, 0.625],
-                    [0.75, 0.5, 0.375, 0.125, 0.0, 0.125, 0.375, 0.125, 0.0, 0.125, 0.375, 0.5],
-                    [0.625, 0.375, 0.25, 0.0, 0.125, 0.25, 0.5, 0.25, 0.125, 0.0, 0.25, 0.375],
-                    [0.5, 0.25, 0.125, 0.0, 0.25, 0.375, 0.625, 0.375, 0.25, 0.0, 0.125, 0.25],
-                    [0.375, 0.125, 0.0, 0.125, 0.375, 0.5, 0.75, 0.5, 0.375, 0.125, 0.0, 0.125],
-                    [0.25, 0.125, 0.25, 0.375, 0.5, 0.625, 0.875, 0.625, 0.5, 0.375, 0.25, 0.125],
-                    [0.125, 0.25, 0.375, 0.5, 0.625, 0.875, 1.0, 0.875, 0.625, 0.5, 0.375, 0.25],
-                    [0.25, 0.125, 0.25, 0.375, 0.5, 0.625, 0.875, 0.625, 0.5, 0.375, 0.25, 0.125],
-                    [0.375, 0.125, 0.0, 0.125, 0.375, 0.5, 0.75, 0.5, 0.375, 0.125, 0.0, 0.125],
-                    [0.5, 0.25, 0.125, 0.0, 0.25, 0.375, 0.625, 0.375, 0.25, 0.0, 0.125, 0.25],
-                    [0.625, 0.375, 0.25, 0.0, 0.125, 0.25, 0.5, 0.25, 0.125, 0.0, 0.25, 0.375],
-                    [0.75, 0.5, 0.375, 0.125, 0.0, 0.125, 0.375, 0.125, 0.0, 0.125, 0.375, 0.5]
-                ].reversed_axes()
-            },
-            Self::NewStars => {
-                let stars_arr = array![
-                    [4., 5., 3., 2., 1., 0., 1., 2., 3., 5.],
-                    [3., 2., 1., 0., 0., 1., 0., 1., 2., 5.],
-                    [2., 1., 0., 0., 1., 2., 0., 0., 1., 3.],
-                    [1., 0., 0., 1., 2., 3., 1., 0., 0., 2.],
-                    [0., 1., 2., 3., 4., 4., 2., 1., 0., 1.],
-                    [1., 0., 1., 2., 4., 5., 3., 2., 1., 0.],
-                    [2., 0., 0., 1., 3., 2., 1., 0., 0., 1.],
-                    [3., 1., 0., 0., 2., 1., 0., 0., 1., 2.],
-                    [4., 2., 1., 0., 1., 0., 0., 1., 2., 3.],
-                    [5., 3., 2., 1., 0., 1., 2., 3., 5., 5.],
-                ].reversed_axes();
-                stars_arr / 5.
-            },
-            Self::Grid => {
-                let stars_arr = array![
-                    [0., 1., 0., 1., 0., 1., 0., 1., 0., 1.],
-                    [1., 2., 3., 2., 3., 2., 3., 2., 3., 0.],
-                    [0., 3., 4., 5., 4., 5., 4., 5., 2., 1.],
-                    [1., 2., 5., 6., 7., 6., 7., 4., 3., 0.],
-                    [0., 3., 4., 7., 8., 9., 6., 5., 2., 1.],
-                    [1., 2., 5., 6., 9., 8., 7., 4., 3., 0.],
-                    [0., 3., 4., 7., 6., 7., 6., 5., 2., 1.],
-                    [1., 2., 5., 4., 5., 4., 5., 4., 3., 0.],
-                    [0., 3., 2., 3., 2., 3., 2., 3., 2., 1.],
-                    [1., 0., 1., 0., 1., 0., 1., 0., 1., 0.],
-                ].reversed_axes();
-                stars_arr / 9.
-            },
-            Self::Trail => {
-                let stars_arr = array![
-                    [9., 8., 7., 6., 5., 4., 3., 2., 1., 0.],
-                    [8., 9., 8., 7., 6., 5., 4., 3., 2., 1.],
-                    [7., 8., 9., 8., 7., 6., 5., 4., 3., 2.],
-                    [6., 7., 8., 9., 8., 7., 6., 5., 4., 3.],
-                    [5., 6., 7., 8., 9., 8., 7., 6., 5., 4.],
-                    [4., 5., 6., 7., 8., 9., 8., 7., 6., 5.],
-                    [3., 4., 5., 6., 7., 8., 9., 8., 7., 6.],
-                    [2., 3., 4., 5., 6., 7., 8., 9., 8., 7.],
-                    [1., 2., 3., 4., 5., 6., 7., 8., 9., 8.],
-                    [0., 1., 2., 3., 4., 5., 6., 7., 8., 9.],
-                ].reversed_axes();
-                stars_arr / 9.
-            },
-            Self::Crisscross => {
-                let stars_arr = array![
-                    [8., 8., 8., 8., 8., 9., 8., 7., 6., 5., 4.],
-                    [7., 7., 7., 7., 8., 9., 8., 7., 6., 5., 5.],
-                    [6., 6., 6., 7., 8., 9., 8., 7., 6., 6., 6.],
-                    [5., 5., 6., 7., 8., 9., 8., 7., 7., 7., 7.],
-                    [4., 5., 6., 7., 8., 9., 8., 8., 8., 8., 8.],
-                    [9., 9., 9., 9., 9., 9., 9., 9., 9., 9., 9.],
-                    [8., 8., 8., 8., 8., 9., 8., 7., 6., 5., 4.],
-                    [7., 7., 7., 7., 8., 9., 8., 7., 6., 5., 5.],
-                    [6., 6., 6., 7., 8., 9., 8., 7., 6., 6., 6.],
-                    [5., 5., 6., 7., 8., 9., 8., 7., 7., 7., 7.],
-                    [4., 5., 6., 7., 8., 9., 8., 8., 8., 8., 8.],
-                ].reversed_axes();
-                (stars_arr-4.) / 5.
-            },
-            Self::Static => {
-                let stars_arr = array![
-                    [2., 1., 3., 4., 5., 9., 7., 8., 0., 6.],
-                    [6., 3., 2., 8., 9., 5., 4., 1., 7., 0.],
-                    [5., 9., 4., 3., 6., 0., 7., 2., 1., 8.],
-                    [8., 0., 2., 1., 5., 6., 3., 7., 4., 9.],
-                    [0., 2., 9., 6., 1., 4., 5., 8., 7., 3.],
-                    [4., 1., 5., 8., 3., 2., 0., 7., 8., 6.],
-                    [3., 6., 0., 2., 8., 5., 9., 1., 7., 4.],
-                    [9., 8., 6., 0., 4., 1., 2., 3., 5., 7.],
-                    [7., 4., 2., 9., 3., 6., 8., 0., 5., 1.],
-                ].reversed_axes();
-                stars_arr / 9.
-            },
-            Self::Wavy(orientation) => {
-                let mut stars_arr = array![
-                    [1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, 34.0],
-                    [34.0, 21.0, 13.0, 8.0, 5.0, 3.0, 2.0, 1.0, 1.0],
-                    [1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, 34.0],
-                    [34.0, 21.0, 13.0, 8.0, 5.0, 3.0, 2.0, 1.0, 1.0],
-                    [1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, 34.0],
-                    [34.0, 21.0, 13.0, 8.0, 5.0, 3.0, 2.0, 1.0, 1.0],
-                    [1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, 34.0],
-                    [34.0, 21.0, 13.0, 8.0, 5.0, 3.0, 2.0, 1.0, 1.0],
-                    [1.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, 34.0],
-                ];
-                if let Orientation::Vertical = orientation {
-                    stars_arr = stars_arr.reversed_axes();
-                }
-
-                stars_arr / 34.
-            },
-            Self::BootlegBayer => {
-                let stars_arr = array![
-                    [1., 7., 3.],
-                    [8., 2., 9.],
-                    [5., 6., 4.],
-                ].reversed_axes();
-                stars_arr / 9.
-            },
-            Self::Diagonals => {
-                let stars_arr = array![
-                    [10., 5., 1.,],
-                    [1., 10., 5.,],
-                    [5., 1., 10.,],
-                ].reversed_axes();
-                stars_arr / 10.
-            },
-            Self::DiagonalsBig => {
-                let stars_arr = array![
-                    [256., 128., 64., 32., 16., 8., 4., 2., 1.],
-                    [1., 256., 128., 64., 32., 16., 8., 4., 2.],
-                    [2., 1., 256., 128., 64., 32., 16., 8., 4.],
-                    [4., 2., 1., 256., 128., 64., 32., 16., 8.],
-                    [8., 4., 2., 1., 256., 128., 64., 32., 16.],
-                    [16., 8., 4., 2., 1., 256., 128., 64., 32.],
-                    [32., 16., 8., 4., 2., 1., 256., 128., 64.],
-                    [64., 32., 16., 8., 4., 2., 1., 256., 128.],
-                    [128., 64., 32., 16., 8., 4., 2., 1., 256.],
-                ].reversed_axes();
-                stars_arr / 256.
-            },
-            Self::DiagonalsN{ n, direction, increase} => {
-                let mut matrix = Array::<f64, _>::zeros((n, n));
-
-                let mut numerals = Vec::<f64>::new();
-
-                for i in 0..n {
-                    numerals.push(match increase {
-                        Increase::Linear(f) => i as f64 * f as f64,
-                        Increase::Exponential(f) => f.pow(i as u32) as f64,
-                    });
-                }
-
-                if let DiagonalDirection::DownRight = direction {
-                    numerals.reverse();
-                }
-
-                for x in 0..n {
-                    for y in 0..n {
-                        let dot = matrix.get_mut((x, y)).unwrap();
-
-                        // This will iterate over the array, and then shift to the right with mapping.
-                        // "% n" handles the mapping.
-                        // x moves laterally through the numerals
-                        // (y * (n-1)) ensures that it will shift correctly.
-                        //
-                        // [0, 1, 2], [2, 0, 1], [1, 2, 0]
-                        // (0, 0) [0], (1, 0) [1], (2, 0) [2], (0, 1) [2], (1,1) [3 % 3 = 0]
-                        *dot = numerals[(y * (n-1) + x) % n];
-                    }
-                }
-
-                matrix / *numerals.iter().max_by(|a, b| a.total_cmp(b)).expect("[E001] Couldn't compute max in DiagonalsN.")
-            },
-            Self::DiamondGrid => {
-                let stars_arr = array![
-                    [10., 6., 4., 6., 10.],
-                    [8., 10., 6., 10., 8.],
-                    [2., 8., 10., 8., 2.],
-                    [8., 10., 6., 10., 8.],
-                    [10., 6., 4., 6., 10.],
-                ].reversed_axes();
-                (stars_arr-2.) / 8.
-            },
-            Self::SpeckleSquares => {
-                let stars_arr = array![
-                    [1., 3., 1.],
-                    [2., 3., 2.],
-                    [1., 3., 1.],
-                ].reversed_axes();
-                stars_arr / 3.
-            },
-            Self::Scales => {
-                let stars_arr = array![
-                    [9., 8., 7., 6., 5., 4., 3., 2., 1.],
-                    [8., 9., 8., 7., 6., 5., 4., 3., 2.],
-                    [7., 8., 9., 8., 7., 6., 5., 4., 3.],
-                    [6., 7., 8., 9., 8., 7., 6., 5., 4.],
-                    [5., 6., 7., 8., 9., 8., 7., 6., 5.],
-                    [4., 5., 6., 7., 8., 9., 8., 7., 6.],
-                    [3., 4., 5., 6., 7., 8., 9., 8., 7.],
-                    [2., 3., 4., 5., 6., 7., 8., 9., 8.],
-                    [1., 2., 3., 4., 5., 6., 7., 8., 9.],
-                ].reversed_axes();
-                stars_arr / 9.
-            },
-            Self::TrailScales => {
-                let stars_arr = array![
-                    [0., 8., 7., 6., 5., 4., 3., 2., 1., 0.],
-                    [8., 5., 8., 7., 6., 5., 4., 3., 5., 8.],
-                    [7., 8., 6., 8., 7., 6., 5., 4., 3., 7.],
-                    [6., 7., 8., 9., 8., 7., 6., 5., 4., 6.],
-                    [5., 6., 7., 8., 9., 8., 7., 6., 5., 5.],
-                    [4., 5., 6., 7., 8., 9., 8., 7., 6., 4.],
-                    [3., 4., 5., 6., 7., 8., 9., 8., 7., 3.],
-                    [2., 3., 4., 5., 6., 7., 8., 3., 8., 2.],
-                    [1., 5., 3., 4., 5., 6., 6., 5., 3., 1.],
-                    [0., 8., 7., 6., 5., 4., 3., 2., 1., 0.],
-                ].reversed_axes();
-                stars_arr / 9.
-            },
-            Self::DiagonalTiles(n) => {
-                let mut matrix =  Array::<f64, _>::zeros((n, n));
-
-                for a in 0..n {
-                    let min = a;
-                    let max = n - a;
-
-                    for i in min..max {
-                        let to_mark = matrix.get_mut((a, i)).unwrap();
-                        *to_mark = (n - i) as f64;
-                        let to_mark = matrix.get_mut((n-a-1, i)).unwrap();
-                        *to_mark = (n - i) as f64;
-
-                        let to_mark = matrix.get_mut((i, a)).unwrap();
-                        *to_mark = (n - i) as f64;
-                        let to_mark = matrix.get_mut((i, n-a-1)).unwrap();
-                        *to_mark = (n - i) as f64;
-                    }
-                }
-
-                matrix / (n as f64)
-            },
-            Self::BouncingBowtie(n) => {
-                let mut matrix =  Array::<f64, _>::zeros((n, n));
-
-                for x in 0..n {
-                    for y in 0..n {
-                        let dot = matrix.get_mut((x, y)).unwrap();
-                        *dot = ((n - x - y - 1).pow(2) as isize).abs() as f64;
-                    }
-                }
-
-                matrix / (n.pow(2) as f64)
-            },
-            Self::ScanLine(n, orientation) => {
-                let mut matrix =  Array::<f64, _>::zeros((n, n));
-
-                for x in 0..n {
-                    for y in 0..n {
-                        let main_coord = if let Orientation::Vertical = orientation { x } else { y };
-                        let bigger_coord = main_coord.max(n-main_coord);
-
-                        let point = matrix.get_mut((x, y)).unwrap();
-
-                        *point = bigger_coord as f64;
-                    }
-                }
-
-                matrix / n as f64
-            },
-            Self::Starburst(n) => {
-                let mut matrix =  Array::<f64, _>::zeros((n, n));
-
-                for x in 0..n {
-                    for y in 0..n {
-                        let bigger_coord = x.min(n-x) * y.min(n-y);
-
-                        let point = matrix.get_mut((x, y)).unwrap();
-
-                        *point = bigger_coord as f64;
-                    }
-                }
-
-                matrix / ((n/2).pow(2) as f64)
-            },
-            Self::ShinyBowtie(n) => {
-                let mut matrix =  Array::<f64, _>::zeros((n, n));
-
-                for x in 0..n {
-                    for y in 0..n {
-                        let max_c = x.max(y);
-                        let min_c = x.min(y);
-                        let bigger_coord = (max_c.pow(2) as f64 / (min_c.pow(2)+1) as f64).abs();
-
-                        let point = matrix.get_mut((x, y)).unwrap();
-
-                        *point = bigger_coord;
-                    }
-                }
-
-                matrix / (n-1).pow(2) as f64
-            },
-            Self::MarbleTile(n) => {
-                let mut matrix =  Array::<f64, _>::zeros((n, n));
-
-                for x in 0..n {
-                    for y in 0..n {
-                    let mag = x as isize - y as isize;
-                    let point = matrix.get_mut((x, y)).unwrap(); 
-                    *point = mag as f64;
-                    }
-                }
-
-                matrix /= n as f64;
-                matrix += 1.;
-                matrix * 0.5
-            },
-            Self::CurvePath { n, amplitude, promotion, halt_threshold } => {
-                generate_curve_path_matrix(n, halt_threshold, amplitude, promotion)
-            },
-            Self::ZigZag { n, halt_threshold, wrapping, magnitude, promotion } => {
-                generate_zigzag_matrix(n, halt_threshold, wrapping, magnitude, promotion)
-            },
-            Self::BrokenSpiral { n, base_step, oob_threshold, increment_by, increment_in } => {
-                generate_broken_spiral_matrix(n, base_step, oob_threshold, increment_by, increment_in)
-            },
-            Self::ModuloSnake { n, increment_by, modulo, iterations } => {
-                generate_modulosnake(n, increment_by, modulo, iterations)
-            }
-            Self::Invert(strategy) => {
-                1.0 - &strategy.get_matrix()
-            },
-            Self::Mirror(strategy, mirrorline, ) => {
+            Self::Bayer(size) => dither_bayer(size),
+            Self::Diamonds(n) => generate_diamonds(n),
+            Self::CheckeredDiamonds(n) => generate_checkered_diamonds(n),
+            Self::Stars => get_stars().reversed_axes(),
+            Self::NewStars => get_new_stars(),
+            Self::Grid => get_grid(),
+            Self::Trail => get_trail(),
+            Self::Crisscross => get_crisscross(),
+            Self::Static => get_static(),
+            Self::Wavy(orientation) => get_wavy(orientation),
+            Self::BootlegBayer => get_bootleg_bayer(),
+            Self::Diagonals => get_diagonals(),
+            Self::DiagonalsBig => get_diagonals_big(),
+            Self::DiagonalsN {
+                n,
+                direction,
+                increase,
+            } => diagonals_n(n, direction, increase),
+            Self::DiamondGrid => get_diamond_grid(),
+            Self::SpeckleSquares => get_speckle_squares(),
+            Self::Scales => get_scales(),
+            Self::TrailScales => get_trail_scales(),
+            Self::DiagonalTiles(n) => generate_diagonal_tiles(n),
+            Self::BouncingBowtie(n) => bouncing_bowtie(n),
+            Self::ScanLine(n, orientation) => generate_scanline(n, orientation),
+            Self::Starburst(n) => starburst(n),
+            Self::ShinyBowtie(n) => generate_shiny_bowtie(n),
+            Self::MarbleTile(n) => generate_marble_tile(n),
+            Self::CurvePath {
+                n,
+                amplitude,
+                promotion,
+                halt_threshold,
+            } => generate_curve_path_matrix(n, halt_threshold, amplitude, promotion),
+            Self::ZigZag {
+                n,
+                halt_threshold,
+                wrapping,
+                magnitude,
+                promotion,
+            } => generate_zigzag_matrix(n, halt_threshold, wrapping, magnitude, promotion),
+            Self::BrokenSpiral {
+                n,
+                base_step,
+                oob_threshold,
+                increment_by,
+                increment_in,
+            } => generate_broken_spiral_matrix(
+                n,
+                base_step,
+                oob_threshold,
+                increment_by,
+                increment_in,
+            ),
+            Self::ModuloSnake {
+                n,
+                increment_by,
+                modulo,
+                iterations,
+            } => generate_modulosnake(n, increment_by, modulo, iterations),
+            Self::Invert(strategy) => 1.0 - &strategy.get_matrix(),
+            Self::Mirror(strategy, mirrorline) => {
                 let mut matrix = strategy.get_matrix().clone();
                 mirrorline.mirror(&mut matrix);
                 matrix
-            },
+            }
+            Self::Blur(strategy, n) => {
+                let mut matrix = strategy.get_matrix().clone();
+                blur_matrix(&mut matrix, n);
+                matrix
+            }
+            Self::Exponentiate(strategy, factor) => {
+                let mut matrix = strategy.get_matrix().clone();
+                exponentiate_matrix(&mut matrix, factor);
+                matrix
+            }
+            Self::Rotate(strategy, rotation) => {
+                let mut matrix = strategy.get_matrix();
+                rotate_matrix(&mut matrix, rotation);
+                matrix
+            }
             Self::Custom(matrix) => matrix.clone(),
         }
     }
@@ -490,6 +204,10 @@ impl OrderedStrategy {
     pub fn mirror(self, mirror_line: MirrorLine) -> Self {
         Self::Mirror(Box::new(self), mirror_line)
     }
+
+    pub fn blur(self, blur_amnt: usize) -> Self {
+        Self::Blur(Box::new(self), blur_amnt)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -499,12 +217,10 @@ pub struct Ordered {
 }
 
 impl Ordered {
-
     /// Creates a new `Bayer` ditherer with the given matrix size.
     pub fn new(palette: Vec<Srgb>, strategy: OrderedStrategy) -> Self {
         Self { palette, strategy }
     }
-
 
     fn dither_matrix(self) -> Array<f64, Dim<[usize; 2]>> {
         self.strategy.get_matrix()
@@ -517,108 +233,4 @@ impl Effect<RgbImageRepr> for Ordered {
         let matrix_size = matrix.dim().0;
         apply_ordered_matrix_to_image(image, matrix, matrix_size, &self.palette)
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Flip(pub bool);
-
-#[derive(Debug, Clone, Copy)]
-pub enum MirrorLine {
-    Horizontal(Flip),
-    Vertical(Flip),
-    Downright(Flip),
-    Upright(Flip),
-}
-
-impl MirrorLine {
-    pub fn mirror(&self, matrix: &mut Array<f64, Dim<[usize; 2]>>) {
-        let (x, y) = matrix.dim();
-
-        if x != y {
-            panic!("Tried to mirror a malformed ordered pattern")
-        }
-
-        if x < 2 {
-            return;
-        }
-
-        let mut mirror = |side1: (usize, usize), side2: (usize, usize), flip: &Flip| {
-            let (source, target) = 
-                if flip.0 { (side1, side2) } else { (side2, side1) };
-
-            let mirrored = {
-                *matrix.get(source).unwrap()
-            };
-            let pix = matrix.get_mut(target).unwrap();
-            *pix = mirrored;
-        };
-
-        match self {
-            MirrorLine::Horizontal(flip) => {
-                for cy in 0..y {
-                    for cx in 0..x/2 {
-                        let side1 = (cy, cx);
-                        let side2 = (cy, x-cx-1);
-
-                        mirror(side1, side2, flip);
-                    }
-                }
-            },
-            MirrorLine::Vertical(flip) => {
-                for cy in 0..y/2 {
-                    for cx in 0..x {
-                        let side1 = (cy, cx);
-                        let side2 = (y-cy-1, cx);
-
-                        mirror(side1, side2, flip);
-                    }
-                }
-            },
-            MirrorLine::Downright(flip) => {
-                for cy in 0..y {
-                    for cx in 0..x {
-                        let side1 = (cy, cx);
-                        let side2 = (cx, cy);
-
-                        mirror(side1, side2, flip);
-                    }
-                }
-            },
-            MirrorLine::Upright(flip) => {
-                for cy in 0..y {
-                    for cx in 0..x {
-                        let side1 = (cy, cx);
-                        let side2 = (y-cy-1, x-cx-1);
-
-                        mirror(side1, side2, flip);
-                    }
-                }
-            },
-        }
-    }
-}
-
-pub fn apply_ordered_matrix_to_image(mut image: RgbImageRepr, matrix: Array<f64, Dim<[usize; 2]>>, matrix_size: usize, palette: &[Srgb]) -> RgbImageRepr {
-    let ydim = image.len();
-    let xdim = image.first().map(|row| row.len()).unwrap_or(0);
-
-    for (x, rows) in image.iter_mut().enumerate().take(ydim) {
-        for (y, cell) in rows.iter_mut().enumerate().take(xdim) {
-            let mut color = Srgb::from(*cell).into_format::<f32>();
-    
-            let offset = (1.0 / 3.0)
-                * (matrix
-                    .get((x % matrix_size, y % matrix_size))
-                    .unwrap_or(&0.0)
-                    - 0.5) as f32;
-    
-            color.red += offset;
-            color.blue += offset;
-            color.green += offset;
-    
-            *cell = quantize_rgb(color, palette).into_format().into();
-        }
-    }
-
-    image
 }
