@@ -9,8 +9,9 @@ pub enum Rotation {
 }
 
 impl Rotation {
-    pub fn rotate_coords(&self, matrix_size: usize, coords: (usize, usize)) -> (usize, usize) {
+    pub fn rotate_coords(&self, mut matrix_size: usize, coords: (usize, usize)) -> (usize, usize) {
         let (y, x) = coords;
+        matrix_size -= 1;
 
         match self {
             Rotation::Right => (matrix_size - x, y),

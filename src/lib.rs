@@ -746,6 +746,7 @@ mod test {
                         flip: true,
                         thorough: true,
                     })
+                    .rotate(dither::ordered::tools::properties::Rotation::Right)
                     .exponentiate(1.0),
             ))
             .save(format!("data/dither/custom{postfix}.png"))?;
