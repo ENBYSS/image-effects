@@ -1,12 +1,8 @@
 use std::ops::Div;
 
-use crate::{
-    dither::ordered::tools::{
-        gen_n_size_matrix,
-        properties::{CheckerType, Factor, Source},
-        Matrix,
-    },
-    utils::numops::abs_i_mod,
+use crate::dither::ordered::tools::{
+    properties::{CheckerType, Factor, Source},
+    Matrix,
 };
 
 pub fn checker_matrix(matrix: &mut Matrix, checker: CheckerType) {

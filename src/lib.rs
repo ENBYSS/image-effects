@@ -153,14 +153,7 @@ mod test {
         dither::{
             ordered::{
                 algorithms::{
-                    broken_spiral::generate_broken_spiral_matrix,
-                    diagonal_tiles::generate_diagonal_tiles,
-                    diagonals_n::generate_diagonals_n,
-                    diamonds::generate_diamonds,
-                    marble_tile::generate_marble_tile,
-                    modulo_snake::generate_modulosnake,
                     properties::{DiagonalDirection, Increase, Orientation, Wrapping},
-                    scanline::generate_scanline,
                     zigzag::generate_zigzag_matrix,
                 },
                 tools::mirror::MirrorLine,
@@ -722,9 +715,9 @@ mod test {
 
         // Custom testing
         let n = 64;
-        let increment_by = 0.8;
-        let modulo = 10;
-        let iterations = 3;
+        // let increment_by = 0.8;
+        // let modulo = 10;
+        // let iterations = 3;
 
         let matrix = generate_zigzag_matrix(n, 1000, Wrapping::None, (0.7, 0.9), (0.015, 0.005));
 

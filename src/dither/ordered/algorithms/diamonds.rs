@@ -1,5 +1,3 @@
-use ndarray::Array;
-
 use crate::dither::ordered::tools::{gen_n_size_matrix, Matrix};
 
 pub fn generate_diamonds(n: usize) -> Matrix {

@@ -1,8 +1,7 @@
-use ndarray::{array, Array, Dim};
+use ndarray::{Array, Dim};
 use palette::Srgb;
 
 use crate::{
-    colour::utils::quantize_rgb,
     dither::ordered::{
         algorithms::{
             bayer::dither_bayer,
@@ -22,7 +21,7 @@ use crate::{
             modulo_snake::generate_modulosnake,
             properties::{DiagonalDirection, Increase, Orientation, Wrapping},
             scanline::generate_scanline,
-            shiny_bowtie::{self, generate_shiny_bowtie},
+            shiny_bowtie::generate_shiny_bowtie,
             starburst::starburst,
             zigzag::generate_zigzag_matrix,
         },

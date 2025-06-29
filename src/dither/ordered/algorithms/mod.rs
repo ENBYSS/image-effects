@@ -1,12 +1,3 @@
-use std::f64::consts::PI;
-
-use ndarray::{concatenate, Array, Axis, Dim};
-
-use crate::{
-    dither::ordered::tools::{gen_n_size_matrix, gen_n_size_visitor_matrix, normalize_matrix},
-    utils::numops::abs_f_mod,
-};
-
 pub mod bayer;
 pub mod bouncing_bowtie;
 pub mod broken_spiral;
