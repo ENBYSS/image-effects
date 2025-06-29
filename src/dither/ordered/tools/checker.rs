@@ -1,40 +1,57 @@
 use std::ops::Div;
 
 use crate::{
-    dither::ordered::tools::{gen_n_size_matrix, properties::Checker, Matrix},
+    dither::ordered::tools::{
+        gen_n_size_matrix,
+        properties::{CheckerType, Factor, Source},
+        Matrix,
+    },
     utils::numops::abs_i_mod,
 };
 
-pub fn checker_matrix(matrix: &mut Matrix, checker: Checker) {
-    let (y, x) = matrix.dim();
-    let mut result = gen_n_size_matrix(x);
-
+pub fn checker_matrix(matrix: &mut Matrix, checker: CheckerType) {
     match checker {
-        Checker::From((y, x)) => {}
-        Checker::Iter(f) => {}
-    }
-
-    for a in 0..y as isize {
-        for b in 0..x as isize {
-            let mut sum = 0.0;
-
-            for ai in -(blur_amnt as isize)..blur_amnt as isize {
-                for bi in -(blur_amnt as isize)..blur_amnt as isize {
-                    let blur_target = (abs_i_mod(a + ai, y), abs_i_mod(b + bi, x));
-                    sum += matrix.get(blur_target).unwrap();
-                }
-            }
-
-            let target = result.get_mut((a as usize, b as usize)).unwrap();
-            *target = sum;
-        }
+        CheckerType::From {
+            source,
+            factor,
+            modulo,
+        } => checker_from(matrix, source, factor, modulo),
+        CheckerType::Iter(f) => checker_iter(matrix, f),
     }
 }
 
 fn checker_iter(matrix: &mut Matrix, f: usize) {
     for (i, pix) in matrix.iter_mut().enumerate() {
-        *pix = pix.div((f as f64).div(i as f64 % f as f64) as f64)
+        *pix = pix.div((f as f64).div(i as f64 % f as f64))
     }
 }
 
-fn checker_from(matrix: &mut Matrix, (y, x): (usize, usize)) {}
+fn checker_from(matrix: &mut Matrix, source: Source, factor: Factor, modulo: Option<usize>) {
+    let (y, x) = source.get(matrix.dim().0);
+
+    let (n, _) = matrix.dim();
+
+    fn dist(from: (usize, usize), to: (usize, usize), modulo: Option<usize>) -> usize {
+        let d = (from.0 as isize - to.0 as isize).unsigned_abs()
+            + (from.1 as isize - to.1 as isize).unsigned_abs();
+
+        if let Some(modulo) = modulo {
+            d % modulo
+        } else {
+            d
+        }
+    }
+
+    for a in 0..n {
+        for b in 0..n {
+            let d = dist((a, b), (y, x), modulo) as f64;
+
+            let to_checker = matrix.get_mut((a, b)).unwrap();
+
+            match factor {
+                Factor::Exponential(factor) => *to_checker *= factor.powf(d),
+                Factor::Linear => *to_checker *= 1.0 / (d + 1.),
+            }
+        }
+    }
+}

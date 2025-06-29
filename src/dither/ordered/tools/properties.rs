@@ -1,4 +1,4 @@
-use std::usize;
+use std::{arch::x86_64, usize};
 
 #[derive(Debug, Clone)]
 pub enum Rotation {
@@ -21,7 +21,33 @@ impl Rotation {
     }
 }
 
-pub enum Checker {
+#[derive(Debug, Clone)]
+pub enum CheckerType {
     Iter(usize),
-    From((usize, usize)),
+    From {
+        source: Source,
+        factor: Factor,
+        modulo: Option<usize>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum Source {
+    Center,
+    Fixed(usize, usize),
+}
+
+impl Source {
+    pub fn get(&self, matrix_size: usize) -> (usize, usize) {
+        match self {
+            Self::Center => (matrix_size / 2, matrix_size / 2),
+            Self::Fixed(y, x) => (*y, *x),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Factor {
+    Exponential(f64),
+    Linear,
 }

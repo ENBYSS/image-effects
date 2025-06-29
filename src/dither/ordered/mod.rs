@@ -11,7 +11,7 @@ use crate::{
             checkered_diamonds::generate_checkered_diamonds,
             curve_path::generate_curve_path_matrix,
             diagonal_tiles::generate_diagonal_tiles,
-            diagonals_n::diagonals_n,
+            diagonals_n::generate_diagonals_n,
             diamonds::generate_diamonds,
             hardcoded::{
                 get_bootleg_bayer, get_crisscross, get_diagonals, get_diagonals_big,
@@ -27,8 +27,14 @@ use crate::{
             zigzag::generate_zigzag_matrix,
         },
         tools::{
-            apply_ordered_matrix_to_image, blur::blur_matrix, exponentiate::exponentiate_matrix,
-            mirror::MirrorLine, properties::Rotation, rotate::rotate_matrix,
+            apply_ordered_matrix_to_image,
+            blur::blur_matrix,
+            checker::checker_matrix,
+            exponentiate::exponentiate_matrix,
+            mirror::MirrorLine,
+            normalize_matrix,
+            properties::{CheckerType, Rotation},
+            rotate::rotate_matrix,
         },
     },
     effect::Effect,
@@ -106,6 +112,7 @@ pub enum OrderedStrategy {
     Blur(Box<OrderedStrategy>, usize),
     Exponentiate(Box<OrderedStrategy>, f64),
     Rotate(Box<OrderedStrategy>, Rotation),
+    Checker(Box<OrderedStrategy>, CheckerType),
     Custom(Array<f64, Dim<[usize; 2]>>),
 }
 
@@ -129,7 +136,7 @@ impl OrderedStrategy {
                 n,
                 direction,
                 increase,
-            } => diagonals_n(n, direction, increase),
+            } => generate_diagonals_n(n, direction, increase),
             Self::DiamondGrid => get_diamond_grid(),
             Self::SpeckleSquares => get_speckle_squares(),
             Self::Scales => get_scales(),
@@ -176,22 +183,27 @@ impl OrderedStrategy {
             Self::Mirror(strategy, mirrorline) => {
                 let mut matrix = strategy.get_matrix().clone();
                 mirrorline.mirror(&mut matrix);
-                matrix
+                normalize_matrix(matrix)
             }
             Self::Blur(strategy, n) => {
                 let mut matrix = strategy.get_matrix().clone();
                 blur_matrix(&mut matrix, n);
-                matrix
+                normalize_matrix(matrix)
             }
             Self::Exponentiate(strategy, factor) => {
                 let mut matrix = strategy.get_matrix().clone();
                 exponentiate_matrix(&mut matrix, factor);
-                matrix
+                normalize_matrix(matrix)
             }
             Self::Rotate(strategy, rotation) => {
                 let mut matrix = strategy.get_matrix();
                 rotate_matrix(&mut matrix, rotation);
-                matrix
+                normalize_matrix(matrix)
+            }
+            Self::Checker(strategy, checker_type) => {
+                let mut matrix = strategy.get_matrix();
+                checker_matrix(&mut matrix, checker_type);
+                normalize_matrix(matrix)
             }
             Self::Custom(matrix) => matrix.clone(),
         }
@@ -207,6 +219,18 @@ impl OrderedStrategy {
 
     pub fn blur(self, blur_amnt: usize) -> Self {
         Self::Blur(Box::new(self), blur_amnt)
+    }
+
+    pub fn exponentiate(self, factor: f64) -> Self {
+        Self::Exponentiate(Box::new(self), factor)
+    }
+
+    pub fn rotate(self, rotation: Rotation) -> Self {
+        Self::Rotate(Box::new(self), rotation)
+    }
+
+    pub fn checker(self, checker_type: CheckerType) -> Self {
+        Self::Checker(Box::new(self), checker_type)
     }
 }
 

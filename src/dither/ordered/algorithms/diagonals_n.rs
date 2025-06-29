@@ -3,7 +3,7 @@ use crate::dither::ordered::{
     tools::{gen_n_size_matrix, Matrix},
 };
 
-pub fn diagonals_n(n: usize, direction: DiagonalDirection, increase: Increase) -> Matrix {
+pub fn generate_diagonals_n(n: usize, direction: DiagonalDirection, increase: Increase) -> Matrix {
     let mut matrix = gen_n_size_matrix(n);
 
     let mut numerals = Vec::<f64>::new();
