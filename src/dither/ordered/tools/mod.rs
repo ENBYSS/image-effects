@@ -1,5 +1,9 @@
 use ndarray::{Array, Dim};
 use palette::Srgb;
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelBridge,
+    ParallelIterator,
+};
 
 use crate::{colour::utils::quantize_rgb, utils::image::RgbImageRepr};
 
@@ -42,9 +46,33 @@ pub fn apply_ordered_matrix_to_image(
     let ydim = image.len();
     let xdim = image.first().map(|row| row.len()).unwrap_or(0);
 
-    for (x, rows) in image.iter_mut().enumerate().take(ydim) {
-        for (y, cell) in rows.iter_mut().enumerate().take(xdim) {
-            let mut color = Srgb::from(*cell).into_format::<f32>();
+    //      Performance counter stats for 'cargo test --release':
+
+    //          24,182.73 msec task-clock:u                     #    1.626 CPUs utilized
+    //                  0      context-switches:u               #    0.000 /sec
+    //                  0      cpu-migrations:u                 #    0.000 /sec
+    //            103,405      page-faults:u                    #    4.276 K/sec
+    //    164,569,987,236      instructions:u                   #    1.89  insn per cycle
+    //                                                          #    0.03  stalled cycles per insn
+    //     86,987,525,609      cycles:u                         #    3.597 GHz
+    //      4,812,809,355      stalled-cycles-frontend:u        #    5.53% frontend cycles idle
+    //     13,425,734,897      branches:u                       #  555.179 M/sec
+    //        114,572,758      branch-misses:u                  #    0.85% of all branches
+
+    //       14.876598083 seconds time elapsed
+
+    //       22.614836000 seconds user
+    //        1.036618000 seconds sys
+    image
+        .iter_mut()
+        .flat_map(|it| it.iter_mut())
+        .enumerate()
+        // .par_bridge()
+        .for_each(|(idx, pixel)| {
+            let mut color = Srgb::from(*pixel).into_format::<f32>();
+
+            let y = idx / ydim;
+            let x = idx / xdim;
 
             let offset = (1.0 / 3.0)
                 * (matrix
@@ -56,9 +84,8 @@ pub fn apply_ordered_matrix_to_image(
             color.blue += offset;
             color.green += offset;
 
-            *cell = quantize_rgb(color, palette).into_format().into();
-        }
-    }
+            *pixel = quantize_rgb(color, palette).into_format().into();
+        });
 
     image
 }

@@ -1,3 +1,4 @@
+#![feature(float_algebraic)]
 //! This crate provides multiple effects that can be applied on an image.
 //!
 //! Currently there's two classes of effects:
@@ -178,7 +179,7 @@ mod test {
     // From Unsplash, and more specifically Ravi Sharma.
     // https://unsplash.com/photos/sun-peeping-on-ice-mountain-hNv5s6NEYig
     const IMAGE_URL: &str = "https://images.unsplash.com/photo-1580826237584-fda5b612e1bc?q=80&w=1827&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
-    const MAX_DIM: Option<usize> = Some(500);
+    const MAX_DIM: Option<usize> = None;
 
     fn get_image() -> UtilResult<DynamicImage> {
         let img_bytes = reqwest::blocking::get(IMAGE_URL)?.bytes()?;

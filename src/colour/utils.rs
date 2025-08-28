@@ -51,7 +51,6 @@ fn quantize_colour(
 
     *current_colour
 }
-
 pub fn quantize_rgb(original_rgb: Srgb, palette: &[Srgb]) -> Srgb {
     let srgb = quantize_colour(
         original_rgb.into_components(),
