@@ -98,6 +98,8 @@ pub mod colour;
 /// Traits and implementations for _effects_ and anything that can be affected by them.
 pub mod effect;
 
+pub mod dispatch;
+
 /// Prelude for including the useful elements from the library - including algorithms, traits, and constants.
 pub mod prelude {
     // algorithms
@@ -150,6 +152,7 @@ mod test {
 
     use crate::{
         colour::utils::ONE_BIT,
+        dispatch::EffectEnum,
         dither::{
             ordered::{
                 algorithms::{
@@ -167,6 +170,7 @@ mod test {
             palettes::{EIGHT_BIT, WEB_SAFE},
             *,
         },
+        utils::image::RgbaImageRepr,
     };
 
     type UtilResult<T> = Result<T, Box<dyn Error>>;
