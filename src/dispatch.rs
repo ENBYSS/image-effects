@@ -14,6 +14,12 @@ pub struct Null<T> {
     _data: PhantomData<T>,
 }
 
+impl<T> Null<T> {
+    pub fn _only_use_if_needed() -> Self {
+        Null { _data: PhantomData }
+    }
+}
+
 impl<T> Effect<RgbPixelRepr> for Null<T> {
     fn affect(&self, item: RgbPixelRepr) -> RgbPixelRepr {
         item
