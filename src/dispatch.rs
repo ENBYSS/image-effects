@@ -53,3 +53,34 @@ where
     ErrorPropagator(ErrorPropagator<'static, 'static, WithPalette>),
     Null(Null<T>),
 }
+
+impl<T> EffectEnum<T>
+where
+    HueRotate: Effect<T>,
+    Contrast: Effect<T>,
+    Brighten: Effect<T>,
+    Saturate: Effect<T>,
+    GradientMap: Effect<T>,
+    QuantizeHue: Effect<T>,
+    MultiplyHue: Effect<T>,
+    Invert: Effect<T>,
+    Ordered: Effect<T>,
+    ErrorPropagator<'static, 'static, WithPalette>: Effect<T>,
+    Null<T>: Effect<T>,
+{
+    pub fn affect(&self, item: T) -> T {
+        match self {
+            Self::HueRotate(fx) => fx.affect(item),
+            Self::Contrast(fx) => fx.affect(item),
+            Self::Brighten(fx) => fx.affect(item),
+            Self::Saturate(fx) => fx.affect(item),
+            Self::GradientMap(fx) => fx.affect(item),
+            Self::QuantizeHue(fx) => fx.affect(item),
+            Self::MultiplyHue(fx) => fx.affect(item),
+            Self::Invert(fx) => fx.affect(item),
+            Self::Ordered(fx) => fx.affect(item),
+            Self::ErrorPropagator(fx) => fx.affect(item),
+            Self::Null(fx) => fx.affect(item),
+        }
+    }
+}
